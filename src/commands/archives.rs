@@ -4,6 +4,10 @@ use crate::error::CliError;
 use crate::output;
 use crate::types::*;
 
+fn display_date_prefix(timestamp: &str) -> String {
+    timestamp.chars().take(10).collect()
+}
+
 pub async fn run(action: ArchivesAction, client: &Client, json: bool) -> Result<(), CliError> {
     match action {
         ArchivesAction::Search {
@@ -37,7 +41,7 @@ pub async fn run(action: ArchivesAction, client: &Client, json: bool) -> Result<
             let resp = client.post("/archives", &req).await?;
             let data: GetArchivesResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 if let Some(total) = data.total {
                     eprintln!("Total results: {total}");
@@ -50,7 +54,7 @@ pub async fn run(action: ArchivesAction, client: &Client, json: bool) -> Result<
                         archive.archive.total_area_square_km,
                         archive.archive.gsd,
                         archive.archive.price_for_one_square_km,
-                        &archive.archive.capture_timestamp[..10.min(archive.archive.capture_timestamp.len())],
+                        display_date_prefix(&archive.archive.capture_timestamp),
                     );
                 }
                 if let Some(next) = &data.next_page {
@@ -62,7 +66,7 @@ pub async fn run(action: ArchivesAction, client: &Client, json: bool) -> Result<
             let resp = client.get(&format!("/archives/{archive_id}")).await?;
             let data: Archive = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 println!("Archive:      {}", data.archive_id);
                 println!("Provider:     {:?}", data.provider);
@@ -87,4 +91,19 @@ pub async fn run(action: ArchivesAction, client: &Client, json: bool) -> Result<
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::display_date_prefix;
+
+    #[test]
+    fn display_date_prefix_limits_output_to_ten_characters() {
+        assert_eq!(display_date_prefix("2025-04-01T12:00:00Z"), "2025-04-01");
+    }
+
+    #[test]
+    fn display_date_prefix_is_safe_for_short_or_non_ascii_strings() {
+        assert_eq!(display_date_prefix("éclair"), "éclair");
+    }
 }

@@ -26,21 +26,26 @@ async fn run(cli: Cli) -> Result<(), CliError> {
     let config_path = cli.config.unwrap_or_else(Config::path);
     let mut config = Config::load(&config_path)?;
 
-    // Config commands don't need an API client
-    if let Command::Config { action } = cli.command {
-        return commands::config::run(action, &mut config, &config_path);
-    }
-
-    // All other commands need a client
-    let client = client::Client::new(&config, cli.timeout)?;
-
     match cli.command {
-        Command::Config { .. } => unreachable!(),
+        Command::Config { action } => commands::config::run(action, &mut config, &config_path),
+        command => {
+            let client = client::Client::new(&config, cli.timeout)?;
+            run_api_command(command, &client, cli.json).await
+        }
+    }
+}
+
+async fn run_api_command(
+    command: Command,
+    client: &client::Client,
+    json: bool,
+) -> Result<(), CliError> {
+    match command {
         Command::Ping => {
             let resp = client.get("/ping").await?;
             let data: types::PongResponse = resp.json().await?;
-            if cli.json {
-                output::print_json(&data);
+            if json {
+                output::print_json(&data)?;
             } else {
                 println!("{}", data.message);
             }
@@ -48,8 +53,8 @@ async fn run(cli: Cli) -> Result<(), CliError> {
         Command::Whoami => {
             let resp = client.get("/auth/whoami").await?;
             let data: types::WhoamiUser = resp.json().await?;
-            if cli.json {
-                output::print_json(&data);
+            if json {
+                output::print_json(&data)?;
             } else {
                 println!("{} {} <{}>", data.first_name, data.last_name, data.email);
                 println!("ID:       {}", data.id);
@@ -64,26 +69,31 @@ async fn run(cli: Cli) -> Result<(), CliError> {
             }
         }
         Command::Archives { action } => {
-            commands::archives::run(action, &client, cli.json).await?;
+            commands::archives::run(action, client, json).await?;
         }
         Command::Orders { action } => {
-            commands::orders::run(action, &client, cli.json).await?;
+            commands::orders::run(action, client, json).await?;
         }
         Command::Notifications { action } => {
-            commands::notifications::run(action, &client, cli.json).await?;
+            commands::notifications::run(action, client, json).await?;
         }
         Command::Feasibility { action } => {
-            commands::feasibility::run(action, &client, cli.json).await?;
+            commands::feasibility::run(action, client, json).await?;
         }
         Command::Pricing { aoi } => {
             let req = types::PricingRequest { aoi };
             let resp = client.post("/pricing", &req).await?;
             let data: serde_json::Value = resp.json().await?;
-            if cli.json {
-                println!("{}", serde_json::to_string_pretty(&data).unwrap());
+            if json {
+                output::print_json(&data)?;
             } else {
                 output::print_value(&data, 0);
             }
+        }
+        Command::Config { .. } => {
+            return Err(CliError::General(
+                "config commands must be handled before creating the API client".into(),
+            ));
         }
     }
 

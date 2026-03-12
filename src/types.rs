@@ -359,29 +359,6 @@ pub struct DeliveryEventInfo {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OrderResponse {
-    pub id: String,
-    pub order_type: OrderType,
-    pub order_cost: i64,
-    pub owner_id: String,
-    pub status: DeliveryStatus,
-    pub aoi_sqkm: f64,
-    pub order_code: String,
-    pub created_at: String,
-    pub order_id: String,
-    pub item_id: String,
-    pub aoi: String,
-    pub label: Option<String>,
-    pub order_label: Option<String>,
-    pub download_image_url: Option<String>,
-    pub download_payload_url: Option<String>,
-    pub download_cog_url: Option<String>,
-    pub geocode_location: Option<String>,
-    pub tiles_url: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct OrderInfoWithEvent {
     pub order_info: serde_json::Value,
     pub event: DeliveryEventInfo,
@@ -434,9 +411,4 @@ pub struct FeasibilityTaskResponse {
 #[serde(rename_all = "camelCase")]
 pub struct PassPredictionResponse {
     pub passes: Vec<serde_json::Value>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BadRequestResponse {
-    pub detail: String,
 }

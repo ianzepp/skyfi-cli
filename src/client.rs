@@ -79,15 +79,21 @@ async fn check_status(resp: reqwest::Response) -> Result<reqwest::Response, CliE
     }
 
     let status_code = status.as_u16();
-    let body = resp.text().await.unwrap_or_default();
+    let default_message = status
+        .canonical_reason()
+        .unwrap_or("request failed")
+        .to_string();
+    let body = match resp.text().await {
+        Ok(body) => body,
+        Err(error) => {
+            return Err(CliError::Api {
+                status: status_code,
+                message: format!("failed to read error response body: {error}"),
+            });
+        }
+    };
 
-    // Try to parse as API error
-    if let Ok(err) = serde_json::from_str::<serde_json::Value>(&body) {
-        let message = err
-            .get("detail")
-            .and_then(|d| d.as_str())
-            .unwrap_or(&body)
-            .to_string();
+    if let Some(message) = api_error_message(&body) {
         return Err(CliError::Api {
             status: status_code,
             message,
@@ -96,6 +102,35 @@ async fn check_status(resp: reqwest::Response) -> Result<reqwest::Response, CliE
 
     Err(CliError::Api {
         status: status_code,
-        message: body,
+        message: if body.trim().is_empty() {
+            default_message
+        } else {
+            body
+        },
     })
+}
+
+fn api_error_message(body: &str) -> Option<String> {
+    let err = serde_json::from_str::<serde_json::Value>(body).ok()?;
+
+    err.get("detail")
+        .and_then(|detail| detail.as_str())
+        .map(ToOwned::to_owned)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::api_error_message;
+
+    #[test]
+    fn api_error_message_extracts_detail_field() {
+        let body = r#"{"detail":"forbidden"}"#;
+
+        assert_eq!(api_error_message(body).as_deref(), Some("forbidden"));
+    }
+
+    #[test]
+    fn api_error_message_returns_none_for_non_json_bodies() {
+        assert_eq!(api_error_message("gateway timeout"), None);
+    }
 }

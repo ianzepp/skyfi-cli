@@ -15,6 +15,9 @@ pub enum CliError {
     #[error("http: {0}")]
     Http(#[from] reqwest::Error),
 
+    #[error("serialization: {0}")]
+    Serialize(#[from] toml::ser::Error),
+
     #[error("api error ({status}): {message}")]
     Api { status: u16, message: String },
 }

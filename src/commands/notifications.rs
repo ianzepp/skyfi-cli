@@ -4,11 +4,7 @@ use crate::error::CliError;
 use crate::output;
 use crate::types::*;
 
-pub async fn run(
-    action: NotificationsAction,
-    client: &Client,
-    json: bool,
-) -> Result<(), CliError> {
+pub async fn run(action: NotificationsAction, client: &Client, json: bool) -> Result<(), CliError> {
     match action {
         NotificationsAction::List { page, page_size } => {
             let mut query: Vec<(&str, String)> = vec![];
@@ -21,14 +17,17 @@ pub async fn run(
             let resp = client.get_query("/notifications", &query).await?;
             let data: ListNotificationsResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 eprintln!("Total: {}", data.total);
                 for n in &data.notifications {
                     println!(
                         "{:<36}  {:?}  {}",
                         n.id,
-                        n.product_type.as_ref().map(|pt| format!("{pt:?}")).unwrap_or_default(),
+                        n.product_type
+                            .as_ref()
+                            .map(|pt| format!("{pt:?}"))
+                            .unwrap_or_default(),
                         n.created_at,
                     );
                 }
@@ -40,7 +39,7 @@ pub async fn run(
                 .await?;
             let data: NotificationWithHistoryResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 let n = &data.notification;
                 println!("ID:           {}", n.id);
@@ -80,7 +79,7 @@ pub async fn run(
             let resp = client.post("/notifications", &req).await?;
             let data: NotificationResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 println!("Notification created: {}", data.id);
             }
@@ -91,7 +90,7 @@ pub async fn run(
                 .await?;
             let data: StatusResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 println!("Deleted: {}", data.status);
             }

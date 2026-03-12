@@ -31,7 +31,7 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
             let resp = client.post("/feasibility", &req).await?;
             let data: FeasibilityTaskResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 println!("Feasibility task created:");
                 println!("  ID:          {}", data.id);
@@ -47,7 +47,7 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
                 .await?;
             let data: serde_json::Value = resp.json().await?;
             if json {
-                println!("{}", serde_json::to_string_pretty(&data).unwrap());
+                output::print_json(&data)?;
             } else {
                 output::print_value(&data, 0);
             }
@@ -73,25 +73,21 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
             let resp = client.post("/feasibility/pass-prediction", &req).await?;
             let data: PassPredictionResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 println!("Predicted passes: {}", data.passes.len());
                 for pass in &data.passes {
                     if let Some(obj) = pass.as_object() {
                         println!(
                             "  {} {:>8} {:>6.1}° {}",
-                            obj.get("provider")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("-"),
+                            obj.get("provider").and_then(|v| v.as_str()).unwrap_or("-"),
                             obj.get("resolution")
                                 .and_then(|v| v.as_str())
                                 .unwrap_or("-"),
                             obj.get("offNadirAngle")
                                 .and_then(|v| v.as_f64())
                                 .unwrap_or(0.0),
-                            obj.get("passDate")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("-"),
+                            obj.get("passDate").and_then(|v| v.as_str()).unwrap_or("-"),
                         );
                     }
                 }

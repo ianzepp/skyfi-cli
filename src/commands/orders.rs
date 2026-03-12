@@ -4,6 +4,14 @@ use crate::error::CliError;
 use crate::output;
 use crate::types::*;
 
+fn enum_query_value<T: serde::Serialize>(value: &T, field_name: &str) -> Result<String, CliError> {
+    let value = serde_json::to_value(value)?;
+    value
+        .as_str()
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| CliError::General(format!("{field_name} did not serialize to a string")))
+}
+
 pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<(), CliError> {
     match action {
         OrdersAction::List {
@@ -19,12 +27,12 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             }
             if let Some(ref cols) = sort_by {
                 for c in cols {
-                    query.push(("sort_columns", serde_json::to_string(c).unwrap().trim_matches('"').to_string()));
+                    query.push(("sort_columns", enum_query_value(c, "sort column")?));
                 }
             }
             if let Some(ref dirs) = sort_dir {
                 for d in dirs {
-                    query.push(("sort_directions", serde_json::to_string(d).unwrap().trim_matches('"').to_string()));
+                    query.push(("sort_directions", enum_query_value(d, "sort direction")?));
                 }
             }
             if let Some(p) = page {
@@ -35,7 +43,7 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             let resp = client.get_query("/orders", &query).await?;
             let data: ListOrdersResponse = resp.json().await?;
             if json {
-                output::print_json(&data);
+                output::print_json(&data)?;
             } else {
                 eprintln!("Total orders: {}", data.total);
                 for order in &data.orders {
@@ -58,7 +66,7 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             let resp = client.get(&format!("/orders/{order_id}")).await?;
             let data: serde_json::Value = resp.json().await?;
             if json {
-                println!("{}", serde_json::to_string_pretty(&data).unwrap());
+                output::print_json(&data)?;
             } else {
                 output::print_value(&data, 0);
             }
@@ -83,7 +91,7 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             let resp = client.post("/order-archive", &req).await?;
             let data: serde_json::Value = resp.json().await?;
             if json {
-                println!("{}", serde_json::to_string_pretty(&data).unwrap());
+                output::print_json(&data)?;
             } else {
                 println!("Order created:");
                 println!(
@@ -102,9 +110,7 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
                 );
                 println!(
                     "  Cost:   {} cents",
-                    data.get("orderCost")
-                        .and_then(|v| v.as_i64())
-                        .unwrap_or(0)
+                    data.get("orderCost").and_then(|v| v.as_i64()).unwrap_or(0)
                 );
             }
         }
@@ -146,7 +152,7 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             let resp = client.post("/order-tasking", &req).await?;
             let data: serde_json::Value = resp.json().await?;
             if json {
-                println!("{}", serde_json::to_string_pretty(&data).unwrap());
+                output::print_json(&data)?;
             } else {
                 println!("Tasking order created:");
                 println!(
@@ -170,16 +176,11 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             deliverable_type,
         } => {
             let dtype = format!("{deliverable_type:?}").to_lowercase();
-            let resp = client
-                .get(&format!("/orders/{order_id}/{dtype}"))
-                .await?;
+            let resp = client.get(&format!("/orders/{order_id}/{dtype}")).await?;
             // This endpoint redirects to a download URL
             let url = resp.url().to_string();
             if json {
-                println!(
-                    "{}",
-                    serde_json::json!({ "download_url": url })
-                );
+                output::print_json(&serde_json::json!({ "download_url": url }))?;
             } else {
                 println!("{url}");
             }
@@ -190,9 +191,8 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             delivery_params,
         } => {
             let params: std::collections::HashMap<String, serde_json::Value> =
-                serde_json::from_str(&delivery_params).map_err(|e| {
-                    CliError::General(format!("invalid delivery params JSON: {e}"))
-                })?;
+                serde_json::from_str(&delivery_params)
+                    .map_err(|e| CliError::General(format!("invalid delivery params JSON: {e}")))?;
             let req = OrderRedeliveryRequest {
                 delivery_driver,
                 delivery_params: params,
@@ -202,11 +202,31 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
                 .await?;
             let data: serde_json::Value = resp.json().await?;
             if json {
-                println!("{}", serde_json::to_string_pretty(&data).unwrap());
+                output::print_json(&data)?;
             } else {
                 println!("Redelivery scheduled for order {order_id}");
             }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::enum_query_value;
+    use crate::types::{SortColumn, SortDirection};
+
+    #[test]
+    fn enum_query_value_uses_serde_names_for_sort_columns() {
+        let value = enum_query_value(&SortColumn::CreatedAt, "sort column")
+            .expect("sort column should serialize");
+        assert_eq!(value, "created_at");
+    }
+
+    #[test]
+    fn enum_query_value_uses_serde_names_for_sort_directions() {
+        let value = enum_query_value(&SortDirection::Desc, "sort direction")
+            .expect("sort direction should serialize");
+        assert_eq!(value, "desc");
+    }
 }
