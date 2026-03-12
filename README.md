@@ -112,6 +112,18 @@ skyfi-cli feasibility check \
   --end-date 2025-04-15
 ```
 
+To block until the feasibility job finishes:
+
+```bash
+skyfi-cli feasibility check \
+  --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
+  --product-type day \
+  --resolution HIGH \
+  --start-date 2025-04-01 \
+  --end-date 2025-04-15 \
+  --wait
+```
+
 Create a pass-targeted tasking order:
 
 ```bash

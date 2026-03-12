@@ -597,7 +597,8 @@ pub enum FeasibilityAction {
     /// Submit an asynchronous feasibility check. Returns a task ID to poll with 'status'
     #[command(after_long_help = "\
 The feasibility score (0-1) combines weather forecast and satellite provider availability.
-The task starts in PENDING state; poll with 'feasibility status <ID>' until COMPLETE.
+The task starts in PENDING state. Add --wait to block until the task reaches
+COMPLETE or ERROR.
 
 EXAMPLE:
   skyfi feasibility check \\
@@ -636,6 +637,10 @@ EXAMPLE:
         /// Only evaluate this provider's satellites. Currently only PLANET or UMBRA supported
         #[arg(long)]
         required_provider: Option<String>,
+
+        /// Poll until the feasibility check reaches COMPLETE or ERROR
+        #[arg(long)]
+        wait: bool,
     },
 
     /// Poll the status of a feasibility check by its task ID. States: PENDING, STARTED, COMPLETE, ERROR

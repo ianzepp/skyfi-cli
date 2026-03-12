@@ -3,6 +3,7 @@ use crate::client::Client;
 use crate::error::CliError;
 use crate::output;
 use crate::types::*;
+use tokio::time::{sleep, Duration};
 
 pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Result<(), CliError> {
     match action {
@@ -15,6 +16,7 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
             max_cloud,
             priority,
             required_provider,
+            wait,
         } => {
             let req = FeasibilityRequest {
                 aoi,
@@ -28,7 +30,24 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
             };
             let resp = client.post("/feasibility", &req).await?;
             let data: FeasibilityTaskResponse = resp.json().await?;
-            if json {
+            if wait {
+                let final_status = wait_for_feasibility(client, &data.id).await?;
+                if json {
+                    output::print_json(&serde_json::json!({
+                        "task": data,
+                        "result": final_status
+                    }))?;
+                } else {
+                    println!("Feasibility task created:");
+                    println!("  ID:          {}", data.id);
+                    println!("  Valid until: {}", data.valid_until);
+                    if let Some(score) = &data.overall_score {
+                        println!("  Score:       {score}");
+                    }
+                    println!("Final status:");
+                    output::print_value(&final_status, 1);
+                }
+            } else if json {
                 output::print_json(&data)?;
             } else {
                 println!("Feasibility task created:");
@@ -94,4 +113,48 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
         }
     }
     Ok(())
+}
+
+async fn wait_for_feasibility(
+    client: &Client,
+    feasibility_id: &str,
+) -> Result<serde_json::Value, CliError> {
+    loop {
+        let resp = client
+            .get(&format!("/feasibility/{feasibility_id}"))
+            .await?;
+        let data: serde_json::Value = resp.json().await?;
+
+        match feasibility_status(&data) {
+            Some("COMPLETE") => return Ok(data),
+            Some("ERROR") => {
+                return Err(CliError::General(format!(
+                    "feasibility check {feasibility_id} ended in ERROR"
+                )))
+            }
+            Some(_) | None => sleep(Duration::from_secs(2)).await,
+        }
+    }
+}
+
+fn feasibility_status(value: &serde_json::Value) -> Option<&str> {
+    value.get("status").and_then(|status| status.as_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::feasibility_status;
+    use serde_json::json;
+
+    #[test]
+    fn feasibility_status_reads_status_field() {
+        let value = json!({ "status": "COMPLETE" });
+        assert_eq!(feasibility_status(&value), Some("COMPLETE"));
+    }
+
+    #[test]
+    fn feasibility_status_returns_none_when_missing() {
+        let value = json!({ "id": "abc" });
+        assert_eq!(feasibility_status(&value), None);
+    }
 }
