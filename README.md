@@ -153,6 +153,12 @@ skyfi-cli --json orders list
 ## Validation
 
 ```bash
+./scripts/hygiene.sh
+```
+
+Equivalent manual steps:
+
+```bash
 cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
