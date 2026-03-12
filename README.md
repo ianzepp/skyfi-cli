@@ -28,6 +28,7 @@ search, archive and tasking orders, feasibility checks, pass prediction, notific
   - [orders](#orders)
   - [feasibility](#feasibility)
   - [notifications](#notifications)
+  - [alerts](#alerts)
   - [pricing](#pricing)
 - [Output and JSON Mode](#output-and-json-mode)
 - [Error Handling](#error-handling)
@@ -393,6 +394,13 @@ Manage notifications:
 skyfi-cli notifications list
 skyfi-cli notifications get <NOTIFICATION_ID>
 skyfi-cli notifications delete <NOTIFICATION_ID>
+```
+
+Poll for unseen history events:
+
+```bash
+skyfi-cli alerts poll
+skyfi-cli alerts watch --interval 300
 ```
 
 ---
@@ -781,6 +789,60 @@ Delete a notification. Stops all future webhook deliveries.
 
 ```bash
 skyfi-cli notifications delete <NOTIFICATION_ID>
+```
+
+---
+
+### alerts
+
+Poll and track unseen notification history events directly from the SkyFi API.
+
+These commands do not require the MCP server. They work by listing your notifications and then
+reading each notification's `history` from `GET /notifications/{id}`. The CLI stores seen event
+fingerprints in a local state file at `~/.config/skyfi/alerts-state.json` by default, or next to
+the file passed with `--config`.
+
+#### `alerts poll`
+
+Fetch all notification history and print only unseen events.
+
+```bash
+skyfi-cli alerts poll
+skyfi-cli alerts poll --json
+skyfi-cli alerts poll --no-save-state
+```
+
+| Flag | Description |
+|---|---|
+| `--no-save-state` | Show unseen events without recording them as seen |
+
+#### `alerts watch`
+
+Poll continuously on a fixed interval.
+
+```bash
+skyfi-cli alerts watch --interval 300
+```
+
+| Flag | Description |
+|---|---|
+| `--interval` | Seconds between polls (default: 300) |
+| `--no-save-state` | Show unseen events without recording them as seen |
+
+#### `alerts state show`
+
+Inspect the local alert polling state.
+
+```bash
+skyfi-cli alerts state show
+```
+
+#### `alerts state reset`
+
+Forget all previously seen events and start fresh on the next poll.
+
+```bash
+skyfi-cli alerts state reset
 ```
 
 ---

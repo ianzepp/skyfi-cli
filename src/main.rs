@@ -41,6 +41,7 @@ use clap::Parser;
 use cli::{Cli, Command};
 use config::Config;
 use error::CliError;
+use std::path::Path;
 use std::process;
 
 #[tokio::main]
@@ -61,7 +62,7 @@ async fn run(cli: Cli) -> Result<(), CliError> {
         Command::Config { action } => commands::config::run(action, &mut config, &config_path),
         command => {
             let client = client::Client::new(&config, cli.timeout)?;
-            run_api_command(command, &client, cli.json).await
+            run_api_command(command, &client, cli.json, &config_path).await
         }
     }
 }
@@ -70,6 +71,7 @@ async fn run_api_command(
     command: Command,
     client: &client::Client,
     json: bool,
+    config_path: &Path,
 ) -> Result<(), CliError> {
     match command {
         Command::Ping => {
@@ -107,6 +109,9 @@ async fn run_api_command(
         }
         Command::Notifications { action } => {
             commands::notifications::run(action, client, json).await?;
+        }
+        Command::Alerts { action } => {
+            commands::alerts::run(action, client, json, config_path).await?;
         }
         Command::Feasibility { action } => {
             commands::feasibility::run(action, client, json).await?;

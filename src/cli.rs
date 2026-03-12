@@ -46,6 +46,8 @@ TASKING WORKFLOW (request a new satellite capture):
 
 MONITORING WORKFLOW (get notified when new imagery appears):
   skyfi notifications create --aoi '<WKT_POLYGON>' --webhook-url https://example.com/hook
+  skyfi alerts poll
+  skyfi alerts watch --interval 300
 
 AOI FORMAT:
   All --aoi flags accept Well-Known Text (WKT). Typical examples:
@@ -164,6 +166,26 @@ USAGE PATTERN:
         action: NotificationsAction,
     },
 
+    /// Poll notification history and surface unseen alert events
+    #[command(after_long_help = "\
+USAGE PATTERN:
+  Alerts read notification history directly from the SkyFi API. They do not
+  require the MCP server.
+
+  skyfi alerts poll
+  skyfi alerts poll --json
+  skyfi alerts watch --interval 300
+  skyfi alerts state show
+  skyfi alerts state reset
+
+STATE:
+  The CLI stores seen event fingerprints in a local state file so repeated
+  polls only return unseen notification history entries.")]
+    Alerts {
+        #[command(subcommand)]
+        action: AlertsAction,
+    },
+
     /// Check capture feasibility and predict satellite passes over a location
     #[command(after_long_help = "\
 FEASIBILITY vs PASS PREDICTION:
@@ -216,6 +238,42 @@ pub enum ConfigAction {
         /// Full base URL including /platform-api path
         url: String,
     },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum AlertsAction {
+    /// Poll all notifications and print unseen history events
+    Poll {
+        /// Do not persist newly seen events to the local state file
+        #[arg(long)]
+        no_save_state: bool,
+    },
+
+    /// Poll repeatedly on a fixed interval
+    Watch {
+        /// Seconds to wait between polls
+        #[arg(long, default_value = "300")]
+        interval: u64,
+
+        /// Do not persist newly seen events to the local state file
+        #[arg(long)]
+        no_save_state: bool,
+    },
+
+    /// Inspect or reset the local alerts state file
+    State {
+        #[command(subcommand)]
+        action: AlertsStateAction,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum AlertsStateAction {
+    /// Show the current local alerts state
+    Show,
+
+    /// Reset the local alerts state and forget all previously seen events
+    Reset,
 }
 
 #[derive(Debug, Subcommand)]

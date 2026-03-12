@@ -1,3 +1,4 @@
+pub mod alerts;
 pub mod archives;
 pub mod config;
 pub mod feasibility;
