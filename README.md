@@ -11,29 +11,33 @@ This project wraps the SkyFi Platform API v2 command surface for common operatio
 - feasibility checks and pass prediction
 - pricing lookups
 
-## Status
+## Install
 
-The crate currently builds cleanly with `cargo build`, passes `cargo clippy --all-targets --all-features -- -D warnings`, and has a small unit-test baseline with `cargo test`.
-
-## Build
+### Homebrew (macOS and Linux)
 
 ```bash
-cargo build
+brew install ianzepp/tap/skyfi-cli
 ```
 
-Run the CLI from source:
+### Shell script
+
+Downloads the latest release binary for your platform:
 
 ```bash
-cargo run -- --help
+curl -fsSL https://raw.githubusercontent.com/ianzepp/skyfi-cli/master/install.sh | bash
 ```
 
-Install it locally with Cargo:
+### Build from source
 
 ```bash
 cargo install --path .
 ```
 
-Note: the compiled binary name is currently `skyfi-cli`, so installed commands use that executable name unless you rename the package or add an explicit binary target.
+Or run directly without installing:
+
+```bash
+cargo run -- --help
+```
 
 ## Configuration
 
@@ -42,7 +46,7 @@ By default, configuration lives at `~/.config/skyfi/config.toml`.
 Set an API key once:
 
 ```bash
-cargo run -- config set-key <YOUR_KEY>
+skyfi-cli config set-key <YOUR_KEY>
 ```
 
 Or use an environment variable:
@@ -54,7 +58,7 @@ export SKYFI_API_KEY=<YOUR_KEY>
 Inspect current config:
 
 ```bash
-cargo run -- config show
+skyfi-cli config show
 ```
 
 `config show` redacts the stored API key instead of echoing secrets back to the terminal.
@@ -62,7 +66,7 @@ cargo run -- config show
 Override the API base URL:
 
 ```bash
-cargo run -- config set-url https://app.skyfi.com/platform-api
+skyfi-cli config set-url https://app.skyfi.com/platform-api
 ```
 
 The URL is validated before it is saved.
@@ -72,27 +76,27 @@ The URL is validated before it is saved.
 Verify connectivity:
 
 ```bash
-cargo run -- ping
-cargo run -- whoami
+skyfi-cli ping
+skyfi-cli whoami
 ```
 
 Search archives:
 
 ```bash
-cargo run -- archives search \
+skyfi-cli archives search \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))'
 ```
 
 Inspect a specific archive:
 
 ```bash
-cargo run -- archives get <ARCHIVE_ID>
+skyfi-cli archives get <ARCHIVE_ID>
 ```
 
 Create an archive order:
 
 ```bash
-cargo run -- orders order-archive \
+skyfi-cli orders order-archive \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --archive-id <ARCHIVE_ID>
 ```
@@ -100,7 +104,7 @@ cargo run -- orders order-archive \
 Run a feasibility check:
 
 ```bash
-cargo run -- feasibility check \
+skyfi-cli feasibility check \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --product-type day \
   --resolution HIGH \
@@ -108,12 +112,12 @@ cargo run -- feasibility check \
   --end-date 2025-04-15
 ```
 
-The CLI now follows the checked-in [openapi.json](/Users/ianzepp/github/ianzepp/skyfi-cli/openapi.json) contract for request and response shapes. In particular, `--aoi` values should be WKT strings such as `POLYGON ((...))` or `POINT (...)`.
+All `--aoi` values are WKT strings such as `POLYGON ((...))` or `POINT (...)`.
 
 Get machine-readable JSON from any command:
 
 ```bash
-cargo run -- --json orders list
+skyfi-cli --json orders list
 ```
 
 ## Validation
