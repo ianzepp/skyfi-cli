@@ -31,17 +31,5 @@ pub fn run(action: ConfigAction, config: &mut Config, config_path: &Path) -> Res
 }
 
 #[cfg(test)]
-mod tests {
-    use super::validate_base_url;
-
-    #[test]
-    fn validate_base_url_accepts_absolute_urls() {
-        assert!(validate_base_url("https://app.skyfi.com/platform-api").is_ok());
-    }
-
-    #[test]
-    fn validate_base_url_rejects_invalid_urls() {
-        let error = validate_base_url("not a url").expect_err("invalid URL should be rejected");
-        assert!(error.to_string().contains("invalid base URL"));
-    }
-}
+#[path = "config_test.rs"]
+mod tests;
