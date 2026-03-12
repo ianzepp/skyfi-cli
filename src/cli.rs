@@ -423,6 +423,72 @@ EXAMPLE:
         provider_window_id: Option<String>,
     },
 
+    /// Predict passes, select a pass, and create a tasking order pinned to that pass
+    #[command(after_long_help = "\
+EXAMPLE:
+  skyfi orders pass-targeted \\
+    --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \\
+    --window-start 2025-04-01T00:00:00Z --window-end 2025-04-15T00:00:00Z \\
+    --product-type day --resolution HIGH
+
+This command:
+  1. Calls 'feasibility pass-prediction' using your AOI, product type, resolution, and window
+  2. Selects the earliest matching pass unless you provide --provider-window-id
+  3. Creates 'orders order-tasking' pinned to that pass")]
+    PassTargeted {
+        /// WKT polygon defining the area to capture
+        #[arg(long)]
+        aoi: String,
+
+        /// Earliest acceptable capture time (ISO 8601 with timezone, e.g. 2025-04-01T00:00:00Z)
+        #[arg(long)]
+        window_start: String,
+
+        /// Latest acceptable capture time (ISO 8601 with timezone)
+        #[arg(long)]
+        window_end: String,
+
+        /// Imagery type to capture: day, night, video, sar, hyperspectral, multispectral, stereo
+        #[arg(long)]
+        product_type: ProductType,
+
+        /// Resolution tier: LOW, MEDIUM, HIGH, VERY HIGH, SUPER HIGH, ULTRA HIGH, or SAR-specific tiers
+        #[arg(long)]
+        resolution: String,
+
+        /// Human-readable label for this order
+        #[arg(long)]
+        label: Option<String>,
+
+        /// If true, prioritize this capture (higher cost, higher likelihood of capture)
+        #[arg(long)]
+        priority: Option<bool>,
+
+        /// Reject captures with cloud coverage above this percentage (0-100). Only meaningful for optical (day/night) imagery
+        #[arg(long)]
+        max_cloud: Option<i64>,
+
+        /// Exclude predicted or requested passes with off-nadir angle above this value in degrees
+        #[arg(long)]
+        max_nadir: Option<i64>,
+
+        /// Force a specific satellite provider for the capture
+        #[arg(long)]
+        required_provider: Option<ApiProvider>,
+
+        /// Where to deliver the imagery. Omit for API download
+        #[arg(long)]
+        delivery_driver: Option<DeliveryDriver>,
+
+        /// URL to receive POST callbacks as order status changes
+        #[arg(long)]
+        webhook_url: Option<String>,
+
+        /// Use this exact providerWindowId instead of auto-selecting the earliest predicted pass
+        #[arg(long)]
+        provider_window_id: Option<String>,
+    },
+
     /// Get a download URL for an order's deliverable. Prints the redirect URL
     #[command(after_long_help = "\
 DELIVERABLE TYPES:

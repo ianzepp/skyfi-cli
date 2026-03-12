@@ -112,6 +112,24 @@ skyfi-cli feasibility check \
   --end-date 2025-04-15
 ```
 
+Create a pass-targeted tasking order:
+
+```bash
+skyfi-cli orders pass-targeted \
+  --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
+  --window-start 2025-04-01T00:00:00Z \
+  --window-end 2025-04-15T00:00:00Z \
+  --product-type day \
+  --resolution HIGH
+```
+
+This predicts matching passes, picks the earliest one by default, and places a tasking
+order pinned to that `providerWindowId`. To inspect candidate passes yourself first, use:
+
+```bash
+skyfi-cli feasibility pass-prediction --aoi 'POINT (-122.4 37.7)' --from-date 2025-04-01 --to-date 2025-04-07
+```
+
 All `--aoi` values are WKT strings such as `POLYGON ((...))` or `POINT (...)`.
 
 Get machine-readable JSON from any command:

@@ -3,6 +3,8 @@ use crate::client::Client;
 use crate::error::CliError;
 use crate::output;
 use crate::types::*;
+use chrono::{DateTime, NaiveDate};
+use serde::{Deserialize, Serialize};
 
 fn enum_query_value<T: serde::Serialize>(value: &T, field_name: &str) -> Result<String, CliError> {
     let value = serde_json::to_value(value)?;
@@ -166,6 +168,73 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
                 );
             }
         }
+        OrdersAction::PassTargeted {
+            aoi,
+            window_start,
+            window_end,
+            product_type,
+            resolution,
+            label,
+            priority,
+            max_cloud,
+            max_nadir,
+            required_provider,
+            delivery_driver,
+            webhook_url,
+            provider_window_id,
+        } => {
+            let from_date = prediction_date(&window_start)?;
+            let to_date = prediction_date(&window_end)?;
+            let prediction_request = PassPredictionRequest {
+                aoi: aoi.clone(),
+                from_date,
+                to_date,
+                product_types: Some(vec![product_type.clone()]),
+                resolutions: Some(vec![resolution.clone()]),
+                max_off_nadir_angle: max_nadir.map(|value| value as f64),
+            };
+
+            let prediction_response = client
+                .post("/feasibility/pass-prediction", &prediction_request)
+                .await?;
+            let predicted_passes: PassPredictionResponse = prediction_response.json().await?;
+            let passes = deserialize_passes(predicted_passes.passes)?;
+            let selected_pass = select_pass(&passes, provider_window_id.as_deref())?;
+
+            let tasking_request = TaskingOrderRequest {
+                aoi,
+                window_start,
+                window_end,
+                product_type,
+                resolution,
+                label: label.clone(),
+                order_label: label,
+                priority_item: priority,
+                max_cloud_coverage_percent: max_cloud,
+                max_off_nadir_angle: max_nadir,
+                required_provider,
+                delivery_driver,
+                delivery_params: None,
+                webhook_url,
+                metadata: None,
+                sar_product_types: None,
+                sar_polarisation: None,
+                provider_window_id: Some(selected_pass.provider_window_id.clone()),
+            };
+
+            let order_response = client.post("/order-tasking", &tasking_request).await?;
+            let order_data: serde_json::Value = order_response.json().await?;
+
+            if json {
+                output::print_json(&serde_json::json!({
+                    "selectedPass": selected_pass,
+                    "order": order_data
+                }))?;
+            } else {
+                print_selected_pass(&selected_pass);
+                print_tasking_order(&order_data);
+            }
+        }
         OrdersAction::Download {
             order_id,
             deliverable_type,
@@ -206,10 +275,114 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PredictedPass {
+    provider_window_id: String,
+    #[serde(default)]
+    provider: Option<String>,
+    #[serde(default)]
+    resolution: Option<String>,
+    #[serde(default)]
+    off_nadir_angle: Option<f64>,
+    #[serde(default)]
+    pass_date: Option<String>,
+}
+
+fn prediction_date(value: &str) -> Result<String, CliError> {
+    if let Ok(date_time) = DateTime::parse_from_rfc3339(value) {
+        return Ok(date_time.format("%Y-%m-%d").to_string());
+    }
+
+    if let Ok(date) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
+        return Ok(date.format("%Y-%m-%d").to_string());
+    }
+
+    Err(CliError::General(format!(
+        "invalid date/time '{value}'. Expected ISO 8601 date or date-time"
+    )))
+}
+
+fn deserialize_passes(passes: Vec<serde_json::Value>) -> Result<Vec<PredictedPass>, CliError> {
+    passes
+        .into_iter()
+        .map(|pass| serde_json::from_value(pass).map_err(CliError::from))
+        .collect()
+}
+
+fn select_pass<'a>(
+    passes: &'a [PredictedPass],
+    provider_window_id: Option<&str>,
+) -> Result<&'a PredictedPass, CliError> {
+    if passes.is_empty() {
+        return Err(CliError::General(
+            "no matching passes found for pass-targeted tasking".into(),
+        ));
+    }
+
+    if let Some(provider_window_id) = provider_window_id {
+        return passes
+            .iter()
+            .find(|pass| pass.provider_window_id == provider_window_id)
+            .ok_or_else(|| {
+                CliError::General(format!(
+                    "providerWindowId '{provider_window_id}' was not found in predicted passes"
+                ))
+            });
+    }
+
+    passes
+        .iter()
+        .min_by(|left, right| left.pass_date.cmp(&right.pass_date))
+        .ok_or_else(|| CliError::General("no predicted passes available".into()))
+}
+
+fn print_selected_pass(pass: &PredictedPass) {
+    println!("Selected pass:");
+    println!(
+        "  Provider:          {}",
+        pass.provider.as_deref().unwrap_or("-")
+    );
+    println!(
+        "  Resolution:        {}",
+        pass.resolution.as_deref().unwrap_or("-")
+    );
+    println!(
+        "  Off-nadir angle:   {}",
+        pass.off_nadir_angle
+            .map(|value| format!("{value:.1}°"))
+            .unwrap_or_else(|| "-".to_string())
+    );
+    println!(
+        "  Pass date:         {}",
+        pass.pass_date.as_deref().unwrap_or("-")
+    );
+    println!("  Provider window:   {}", pass.provider_window_id);
+}
+
+fn print_tasking_order(data: &serde_json::Value) {
+    println!("Tasking order created:");
+    println!(
+        "  ID:     {}",
+        data.get("orderId").and_then(|v| v.as_str()).unwrap_or("-")
+    );
+    println!(
+        "  Code:   {}",
+        data.get("orderCode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("-")
+    );
+    println!(
+        "  Status: {}",
+        data.get("status").and_then(|v| v.as_str()).unwrap_or("-")
+    );
+}
+
 #[cfg(test)]
 mod tests {
-    use super::enum_query_value;
+    use super::{deserialize_passes, enum_query_value, prediction_date, select_pass};
     use crate::types::{SortColumn, SortDirection};
+    use serde_json::json;
 
     #[test]
     fn enum_query_value_uses_serde_names_for_sort_columns() {
@@ -223,5 +396,49 @@ mod tests {
         let value = enum_query_value(&SortDirection::Desc, "sort direction")
             .expect("sort direction should serialize");
         assert_eq!(value, "desc");
+    }
+
+    #[test]
+    fn prediction_date_normalizes_rfc3339_timestamps() {
+        let date = prediction_date("2025-04-01T05:30:00Z").expect("timestamp should parse");
+        assert_eq!(date, "2025-04-01");
+    }
+
+    #[test]
+    fn select_pass_returns_requested_provider_window_id() {
+        let passes = deserialize_passes(vec![
+            json!({
+                "providerWindowId": "second",
+                "provider": "PLANET",
+                "passDate": "2025-04-03T00:00:00Z"
+            }),
+            json!({
+                "providerWindowId": "first",
+                "provider": "UMBRA",
+                "passDate": "2025-04-01T00:00:00Z"
+            }),
+        ])
+        .expect("passes should deserialize");
+
+        let selected = select_pass(&passes, Some("second")).expect("pass should exist");
+        assert_eq!(selected.provider_window_id, "second");
+    }
+
+    #[test]
+    fn select_pass_uses_earliest_pass_date_by_default() {
+        let passes = deserialize_passes(vec![
+            json!({
+                "providerWindowId": "later",
+                "passDate": "2025-04-03T00:00:00Z"
+            }),
+            json!({
+                "providerWindowId": "earlier",
+                "passDate": "2025-04-01T00:00:00Z"
+            }),
+        ])
+        .expect("passes should deserialize");
+
+        let selected = select_pass(&passes, None).expect("one pass should be selected");
+        assert_eq!(selected.provider_window_id, "earlier");
     }
 }

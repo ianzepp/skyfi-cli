@@ -75,7 +75,7 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
                 for pass in &data.passes {
                     if let Some(obj) = pass.as_object() {
                         println!(
-                            "  {} {:>8} {:>6.1}° {}",
+                            "  {} {:>8} {:>6.1}° {}  {}",
                             obj.get("provider").and_then(|v| v.as_str()).unwrap_or("-"),
                             obj.get("resolution")
                                 .and_then(|v| v.as_str())
@@ -84,6 +84,9 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
                                 .and_then(|v| v.as_f64())
                                 .unwrap_or(0.0),
                             obj.get("passDate").and_then(|v| v.as_str()).unwrap_or("-"),
+                            obj.get("providerWindowId")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("-"),
                         );
                     }
                 }
