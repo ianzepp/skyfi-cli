@@ -1,9 +1,33 @@
+//! Webhook notification management commands.
+//!
+//! Notifications let you subscribe to new imagery events over an AOI without
+//! polling the archive search endpoint. When a new archive image appears that
+//! matches your AOI and filters, the platform sends a POST request to your
+//! configured webhook URL.
+//!
+//! # Commands
+//!
+//! - `notifications list` — GET `/notifications`; paginated list of active notifications.
+//! - `notifications get <ID>` — GET `/notifications/{id}`; config plus webhook event history.
+//! - `notifications create` — POST `/notifications`; register a new webhook subscription.
+//! - `notifications delete <ID>` — DELETE `/notifications/{id}`; cancel subscription.
+//!
+//! # GSD filtering
+//!
+//! Notifications support GSD (Ground Sample Distance) range filtering:
+//! - `--gsd-max 5` means "only notify for imagery where each pixel covers 5 m or less"
+//!   (i.e., high-resolution only)
+//! - `--gsd-min 10` means "only notify for imagery coarser than 10 m/px"
+//!
+//! Omitting both GSD flags notifies for all imagery over the AOI.
+
 use crate::cli::NotificationsAction;
 use crate::client::Client;
 use crate::error::CliError;
 use crate::output;
 use crate::types::*;
 
+/// Dispatch a notifications subcommand to the appropriate API call and render the output.
 pub async fn run(action: NotificationsAction, client: &Client, json: bool) -> Result<(), CliError> {
     match action {
         NotificationsAction::List { page, page_size } => {

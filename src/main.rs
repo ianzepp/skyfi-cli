@@ -1,3 +1,32 @@
+//! skyfi-cli — command-line interface for the SkyFi Platform API.
+//!
+//! # Architecture
+//!
+//! The binary has a two-phase startup:
+//!
+//! 1. **Config phase** (`config` subcommand): load config from disk (or create a
+//!    default), apply the requested mutation (set-key, set-url, show), and exit.
+//!    This phase never creates an HTTP client, so it works without a network
+//!    connection or a valid API key.
+//!
+//! 2. **API phase** (all other subcommands): load config, resolve the API key
+//!    (config file → env var), build an authenticated `Client`, and dispatch
+//!    to the appropriate command handler in `commands/`.
+//!
+//! This split is why `Command::Config` is handled before the `Client` is
+//! constructed in `run()`. Attempting to route it through `run_api_command`
+//! would require a valid API key just to show or change settings.
+//!
+//! # Module layout
+//!
+//! - `cli`      — Clap command definitions and all argument types
+//! - `client`   — Authenticated HTTP client wrapper around reqwest
+//! - `commands` — One module per command group (archives, orders, etc.)
+//! - `config`   — Config file loading, saving, and the `Config` struct
+//! - `error`    — Unified `CliError` type
+//! - `output`   — Human-readable and JSON output helpers
+//! - `types`    — Shared API request/response serde models
+
 mod cli;
 mod client;
 mod commands;

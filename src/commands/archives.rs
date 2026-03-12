@@ -1,13 +1,40 @@
+//! Archive catalog search and retrieval commands.
+//!
+//! Archives are previously captured satellite images stored in the SkyFi catalog.
+//! Unlike tasking orders, archive imagery is available immediately — you search,
+//! find an image that meets your needs, and order it.
+//!
+//! # Commands
+//!
+//! - `archives search` — POST `/archives` with filter parameters; returns a paginated
+//!   list of matching images with price, GSD, and overlap ratio.
+//! - `archives get <ID>` — GET `/archives/{id}`; returns full metadata for one image.
+//!
+//! # Human-readable output
+//!
+//! The `search` command prints one line per result:
+//! ```text
+//! <archive_id>         <provider>    <area> km²   <gsd> m   $<price>/km²   <date>
+//! ```
+//! Total results and next-page hints are printed to stderr so they don't interfere
+//! with shell pipelines that consume the archive IDs from stdout.
+
 use crate::cli::ArchivesAction;
 use crate::client::Client;
 use crate::error::CliError;
 use crate::output;
 use crate::types::*;
 
+/// Extract the date portion (first 10 characters) from an ISO 8601 timestamp.
+///
+/// WHY: Full timestamps like `2024-06-15T10:23:00Z` are too wide for the
+/// compact search results table. The date alone (`2024-06-15`) is usually
+/// sufficient for evaluating archive recency.
 fn display_date_prefix(timestamp: &str) -> String {
     timestamp.chars().take(10).collect()
 }
 
+/// Dispatch an archives subcommand to the appropriate API call and render the output.
 pub async fn run(action: ArchivesAction, client: &Client, json: bool) -> Result<(), CliError> {
     match action {
         ArchivesAction::Search {

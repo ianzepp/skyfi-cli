@@ -1,7 +1,32 @@
+//! Shared serde models for the SkyFi Platform API v2.
+//!
+//! This module contains the request and response types that map to the API's
+//! JSON schema. All types are shared across command modules — there is one
+//! canonical `Archive` struct rather than per-command copies.
+//!
+//! # Naming conventions
+//!
+//! - Request types are named `<Verb><Resource>Request` and use `#[serde(rename_all = "camelCase")]`
+//!   to match the API's JSON field names.
+//! - Response types are named `<Resource>Response` or plain `<Resource>` for core entities.
+//! - Enum variants are written in PascalCase in Rust and serialize to `SCREAMING_SNAKE_CASE`
+//!   (the API's convention) unless a specific rename is required.
+//!
+//! # Cost fields
+//!
+//! All monetary values in the API are denominated in **cents (USD)** as integers.
+//! Fields named `*_cents` or `order_cost` should be divided by 100 for display.
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// --- Enums ---
+// -------------------------------------------------------------------------
+// Enums
+//
+// Shared discriminated values used in both request parameters and response
+// fields. Each enum derives `clap::ValueEnum` so the CLI can accept them as
+// flag values with automatic case-insensitive parsing.
+// -------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

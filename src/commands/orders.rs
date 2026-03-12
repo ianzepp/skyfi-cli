@@ -1,3 +1,37 @@
+//! Order creation, listing, retrieval, and delivery commands.
+//!
+//! Orders are the mechanism through which imagery is purchased or commissioned.
+//! There are two order types:
+//!
+//! - **Archive orders** — purchase an existing image from the catalog. Charged
+//!   based on the AOI area clipped from the archive scene.
+//! - **Tasking orders** — commission a new satellite capture within a future
+//!   time window. The satellite provider schedules the capture; delivery occurs
+//!   after the capture and processing pipeline completes.
+//!
+//! # Commands
+//!
+//! - `orders list` — GET `/orders` with pagination and sort parameters.
+//! - `orders get <ID>` — GET `/orders/{id}`; full detail and status history.
+//! - `orders order-archive` — POST `/order-archive`.
+//! - `orders order-tasking` — POST `/order-tasking`.
+//! - `orders pass-targeted` — Composite: calls `pass-prediction` then `order-tasking`.
+//! - `orders download <ID>` — GET `/orders/{id}/{type}`; returns the redirect URL.
+//! - `orders redeliver <ID>` — POST `/orders/{id}/redelivery`.
+//!
+//! # Pass-targeted workflow
+//!
+//! The `PassTargeted` action is a multi-step composite command that exists to
+//! reduce the number of round-trips for a common use case: find the next
+//! satellite pass and immediately book it. The two-step manual equivalent is:
+//!
+//! 1. `feasibility pass-prediction` → get a list of passes with `providerWindowId` values
+//! 2. `orders order-tasking --provider-window-id <UUID>` → lock the order to that pass
+//!
+//! TRADE-OFF: Compositing these into one command means the user cannot inspect the
+//! pass list before committing to the order. Supply `--provider-window-id` explicitly
+//! to override auto-selection when you need that control.
+
 use crate::cli::OrdersAction;
 use crate::client::Client;
 use crate::error::CliError;
@@ -6,6 +40,11 @@ use crate::types::*;
 use chrono::{DateTime, NaiveDate};
 use serde::{Deserialize, Serialize};
 
+/// Serialize an enum value to its string representation for use as a URL query parameter.
+///
+/// WHY: `reqwest`'s `.query()` method serializes structs as form-encoded key-value pairs,
+/// but enum serialization via serde can produce JSON strings with surrounding quotes. This
+/// helper extracts the raw string value so the query parameter arrives correctly.
 fn enum_query_value<T: serde::Serialize>(value: &T, field_name: &str) -> Result<String, CliError> {
     let value = serde_json::to_value(value)?;
     value
@@ -289,6 +328,12 @@ struct PredictedPass {
     pass_date: Option<String>,
 }
 
+/// Extract the date portion from an ISO 8601 date-or-datetime string.
+///
+/// The `pass-prediction` API requires plain dates (`YYYY-MM-DD`), but
+/// `orders pass-targeted` accepts datetime strings for its window arguments
+/// (to match `order-tasking` expectations). This function normalizes either
+/// format to the date-only form expected by the prediction endpoint.
 fn prediction_date(value: &str) -> Result<String, CliError> {
     if let Ok(date_time) = DateTime::parse_from_rfc3339(value) {
         return Ok(date_time.format("%Y-%m-%d").to_string());
@@ -303,6 +348,11 @@ fn prediction_date(value: &str) -> Result<String, CliError> {
     )))
 }
 
+/// Deserialize the raw pass JSON values into typed `PredictedPass` structs.
+///
+/// WHY: `PassPredictionResponse` stores passes as `Vec<serde_json::Value>` because
+/// the pass schema includes provider-specific fields that vary. We deserialize here
+/// to get type-safe access to the fields we need for pass selection.
 fn deserialize_passes(passes: Vec<serde_json::Value>) -> Result<Vec<PredictedPass>, CliError> {
     passes
         .into_iter()
@@ -310,6 +360,12 @@ fn deserialize_passes(passes: Vec<serde_json::Value>) -> Result<Vec<PredictedPas
         .collect()
 }
 
+/// Select a pass from the predicted pass list.
+///
+/// When `provider_window_id` is provided, the pass with that exact ID is located
+/// and returned (error if not found). When it is `None`, the earliest pass by
+/// `pass_date` is selected. String comparison works here because pass dates are
+/// ISO 8601 (`YYYY-MM-DD`), which sorts lexicographically in chronological order.
 fn select_pass<'a>(
     passes: &'a [PredictedPass],
     provider_window_id: Option<&str>,
