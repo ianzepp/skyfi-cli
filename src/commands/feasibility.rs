@@ -16,10 +16,8 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
             priority,
             required_provider,
         } => {
-            let aoi_value: serde_json::Value = serde_json::from_str(&aoi)
-                .map_err(|e| CliError::General(format!("invalid AOI GeoJSON: {e}")))?;
             let req = FeasibilityRequest {
-                aoi: aoi_value,
+                aoi,
                 product_type,
                 resolution,
                 start_date,
@@ -60,10 +58,8 @@ pub async fn run(action: FeasibilityAction, client: &Client, json: bool) -> Resu
             resolutions,
             max_nadir,
         } => {
-            let aoi_value: serde_json::Value = serde_json::from_str(&aoi)
-                .map_err(|e| CliError::General(format!("invalid AOI GeoJSON: {e}")))?;
             let req = PassPredictionRequest {
-                aoi: aoi_value,
+                aoi,
                 from_date,
                 to_date,
                 product_types,

@@ -3,6 +3,8 @@ mod client;
 mod commands;
 mod config;
 mod error;
+#[cfg(test)]
+mod openapi_contract_tests;
 mod output;
 mod types;
 

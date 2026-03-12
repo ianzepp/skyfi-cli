@@ -249,7 +249,7 @@ pub struct PricingRequest {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PassPredictionRequest {
-    pub aoi: serde_json::Value,
+    pub aoi: String,
     pub from_date: String,
     pub to_date: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -263,7 +263,7 @@ pub struct PassPredictionRequest {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeasibilityRequest {
-    pub aoi: serde_json::Value,
+    pub aoi: String,
     pub product_type: ProductType,
     pub resolution: String,
     pub start_date: String,
@@ -325,6 +325,7 @@ pub struct Archive {
     pub min_sq_km: f64,
     pub max_sq_km: f64,
     pub price_for_one_square_km: f64,
+    pub price_for_one_square_km_cents: i64,
     pub price_full_scene: f64,
     pub total_area_square_km: f64,
     pub gsd: f64,
@@ -344,6 +345,7 @@ pub struct ArchiveResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetArchivesResponse {
+    pub request: serde_json::Value,
     pub archives: Vec<ArchiveResponse>,
     pub next_page: Option<String>,
     pub total: Option<i64>,
@@ -351,24 +353,25 @@ pub struct GetArchivesResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DeliveryEventInfo {
+pub struct OrderSummary {
+    pub id: String,
+    pub order_type: OrderType,
+    pub order_cost: i64,
+    pub owner_id: String,
     pub status: DeliveryStatus,
-    pub timestamp: String,
-    pub message: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OrderInfoWithEvent {
-    pub order_info: serde_json::Value,
-    pub event: DeliveryEventInfo,
+    pub aoi_sqkm: f64,
+    pub order_code: String,
+    pub created_at: String,
+    pub order_id: String,
+    pub item_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListOrdersResponse {
+    pub request: serde_json::Value,
     pub total: i64,
-    pub orders: Vec<OrderInfoWithEvent>,
+    pub orders: Vec<OrderSummary>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

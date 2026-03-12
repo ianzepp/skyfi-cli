@@ -23,11 +23,11 @@ AUTHENTICATION:
 
 CORE WORKFLOW:
   1. Search archive imagery for a location:
-       skyfi archives search --aoi '{\"type\":\"Polygon\",\"coordinates\":[[[lon,lat],...]]}'
+       skyfi archives search --aoi 'POLYGON ((lon1 lat1, lon2 lat2, lon3 lat3, lon1 lat1))'
   2. Inspect a result:
        skyfi archives get <ARCHIVE_ID>
   3. Order it:
-       skyfi orders order-archive --aoi '<GeoJSON>' --archive-id <ARCHIVE_ID>
+       skyfi orders order-archive --aoi '<WKT_POLYGON>' --archive-id <ARCHIVE_ID>
   4. Track the order:
        skyfi orders get <ORDER_ID>
   5. Download when delivered:
@@ -35,22 +35,22 @@ CORE WORKFLOW:
 
 TASKING WORKFLOW (request a new satellite capture):
   1. Check if a capture is feasible:
-       skyfi feasibility check --aoi '<GeoJSON>' --product-type day --resolution HIGH \\
+       skyfi feasibility check --aoi '<WKT_POLYGON>' --product-type day --resolution HIGH \\
          --start-date 2025-04-01 --end-date 2025-04-15
   2. Or find specific satellite passes:
-       skyfi feasibility pass-prediction --aoi '<GeoJSON>' \\
+       skyfi feasibility pass-prediction --aoi '<WKT_GEOMETRY>' \\
          --from-date 2025-04-01 --to-date 2025-04-07
   3. Place the tasking order:
-       skyfi orders order-tasking --aoi '<GeoJSON>' --product-type day --resolution HIGH \\
+       skyfi orders order-tasking --aoi '<WKT_POLYGON>' --product-type day --resolution HIGH \\
          --window-start 2025-04-01T00:00:00Z --window-end 2025-04-15T00:00:00Z
 
 MONITORING WORKFLOW (get notified when new imagery appears):
-  skyfi notifications create --aoi '<GeoJSON>' --webhook-url https://example.com/hook
+  skyfi notifications create --aoi '<WKT_POLYGON>' --webhook-url https://example.com/hook
 
 AOI FORMAT:
-  All --aoi flags accept a GeoJSON geometry string. Typically a Polygon:
-    {\"type\":\"Polygon\",\"coordinates\":[[[lon1,lat1],[lon2,lat2],[lon3,lat3],[lon1,lat1]]]}
-  Coordinates are [longitude, latitude] in WGS84 (EPSG:4326).
+  All --aoi flags accept Well-Known Text (WKT). Typical examples:
+    POLYGON ((lon1 lat1, lon2 lat2, lon3 lat3, lon1 lat1))
+    POINT (lon lat)
 
 OUTPUT:
   Human-readable by default. Use --json for structured JSON output suitable
@@ -101,10 +101,10 @@ USAGE PATTERN:
   Each result includes an archiveId, provider, resolution, capture date, area, and price.
 
   Typical flow:
-    skyfi archives search --aoi '<GeoJSON>' --from 2024-01-01 --max-cloud 20
+    skyfi archives search --aoi '<WKT_POLYGON>' --from 2024-01-01 --max-cloud 20
     skyfi archives get <ARCHIVE_ID>
 
-  Then order via: skyfi orders order-archive --aoi '<GeoJSON>' --archive-id <ARCHIVE_ID>
+  Then order via: skyfi orders order-archive --aoi '<WKT_POLYGON>' --archive-id <ARCHIVE_ID>
 
 FILTERING TIPS:
   - Combine --max-cloud and --max-nadir to get clearer, less distorted images
@@ -129,7 +129,7 @@ LIFECYCLE:
   Failed states: PAYMENT_FAILED, PROVIDER_FAILED, PROCESSING_FAILED, DELIVERY_FAILED
 
 TYPICAL FLOW:
-  skyfi orders order-archive --aoi '<GeoJSON>' --archive-id <ID>
+  skyfi orders order-archive --aoi '<WKT_POLYGON>' --archive-id <ID>
   skyfi orders list --order-type archive
   skyfi orders get <ORDER_ID>
   skyfi orders download <ORDER_ID>
@@ -153,7 +153,7 @@ USAGE PATTERN:
   Create a notification to receive a POST to your webhook URL whenever new archive
   imagery matching your filters becomes available over your AOI.
 
-  skyfi notifications create --aoi '<GeoJSON>' --webhook-url https://example.com/hook
+  skyfi notifications create --aoi '<WKT_POLYGON>' --webhook-url https://example.com/hook
   skyfi notifications list
   skyfi notifications get <ID>
   skyfi notifications delete <ID>
@@ -176,11 +176,11 @@ FEASIBILITY vs PASS PREDICTION:
     Use a pass's providerWindowId to lock a tasking order to that exact pass.
 
 TYPICAL FLOW:
-  skyfi feasibility check --aoi '<GeoJSON>' --product-type day --resolution HIGH \\
+  skyfi feasibility check --aoi '<WKT_POLYGON>' --product-type day --resolution HIGH \\
     --start-date 2025-04-01 --end-date 2025-04-15
   skyfi feasibility status <FEASIBILITY_ID>
 
-  skyfi feasibility pass-prediction --aoi '<GeoJSON>' \\
+  skyfi feasibility pass-prediction --aoi '<WKT_GEOMETRY>' \\
     --from-date 2025-04-01 --to-date 2025-04-07
   skyfi orders order-tasking ... --provider-window-id <UUID_FROM_PASS>")]
     Feasibility {
@@ -192,9 +192,9 @@ TYPICAL FLOW:
     #[command(after_long_help = "\
 USAGE:
   skyfi pricing                         # all provider pricing tiers
-  skyfi pricing --aoi '<GeoJSON>'       # pricing calculated for your AOI's area")]
+  skyfi pricing --aoi '<WKT_POLYGON>'   # pricing calculated for your AOI's area")]
     Pricing {
-        /// GeoJSON geometry to calculate area-specific pricing. Omit for general pricing tiers
+        /// WKT geometry to calculate area-specific pricing. Omit for general pricing tiers
         #[arg(long)]
         aoi: Option<String>,
     },
@@ -224,12 +224,11 @@ pub enum ArchivesAction {
     #[command(after_long_help = "\
 EXAMPLE:
   skyfi archives search \\
-    --aoi '{\"type\":\"Polygon\",\"coordinates\":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \\
+    --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \\
     --from 2024-06-01 --to 2024-12-31 \\
     --max-cloud 15 --product-types day --page-size 10")]
     Search {
-        /// GeoJSON geometry defining the search area. Must be a Polygon or MultiPolygon.
-        /// Coordinates are [longitude, latitude] in WGS84
+        /// WKT geometry defining the search area. Usually a POLYGON.
         #[arg(long)]
         aoi: String,
 
@@ -332,13 +331,13 @@ EXAMPLE:
     #[command(after_long_help = "\
 EXAMPLE:
   skyfi orders order-archive \\
-    --aoi '{\"type\":\"Polygon\",\"coordinates\":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \\
+    --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \\
     --archive-id abc123-def456 --label 'SF Bay Q4 2024'
 
   The AOI clips the archive image to your area of interest. You are charged
   based on the clipped area (sqkm * pricePerSqKm), not the full scene.")]
     OrderArchive {
-        /// GeoJSON Polygon to clip the archive image. You pay for this area only
+        /// WKT polygon to clip the archive image. You pay for this area only
         #[arg(long)]
         aoi: String,
 
@@ -363,7 +362,7 @@ EXAMPLE:
     #[command(after_long_help = "\
 EXAMPLE:
   skyfi orders order-tasking \\
-    --aoi '{\"type\":\"Polygon\",\"coordinates\":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \\
+    --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \\
     --window-start 2025-04-01T00:00:00Z --window-end 2025-04-15T00:00:00Z \\
     --product-type day --resolution HIGH --max-cloud 20
 
@@ -371,7 +370,7 @@ EXAMPLE:
   Use 'feasibility pass-prediction' to find specific satellite passes, then
   pass --provider-window-id to lock this order to an exact pass.")]
     OrderTasking {
-        /// GeoJSON Polygon defining the area to capture
+        /// WKT polygon defining the area to capture
         #[arg(long)]
         aoi: String,
 
@@ -490,7 +489,7 @@ EXAMPLE:
     #[command(after_long_help = "\
 EXAMPLE:
   skyfi notifications create \\
-    --aoi '{\"type\":\"Polygon\",\"coordinates\":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \\
+    --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \\
     --webhook-url https://example.com/new-imagery \\
     --product-type day --gsd-max 5
 
@@ -499,7 +498,7 @@ GSD (Ground Sample Distance):
   Lower GSD = higher resolution. --gsd-max 5 means only notify for images
   where each pixel covers 5m or less.")]
     Create {
-        /// GeoJSON Polygon defining the area to monitor
+        /// WKT polygon defining the area to monitor
         #[arg(long)]
         aoi: String,
 
@@ -536,11 +535,11 @@ The task starts in PENDING state; poll with 'feasibility status <ID>' until COMP
 
 EXAMPLE:
   skyfi feasibility check \\
-    --aoi '{\"type\":\"Polygon\",\"coordinates\":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \\
+    --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \\
     --product-type day --resolution HIGH \\
     --start-date 2025-04-01 --end-date 2025-04-15 --max-cloud 20")]
     Check {
-        /// GeoJSON geometry for the area to evaluate
+        /// WKT geometry for the area to evaluate
         #[arg(long)]
         aoi: String,
 
@@ -589,11 +588,11 @@ your tasking order to that exact satellite pass.
 
 EXAMPLE:
   skyfi feasibility pass-prediction \\
-    --aoi '{\"type\":\"Point\",\"coordinates\":[-122.4,37.7]}' \\
+    --aoi 'POINT (-122.4 37.7)' \\
     --from-date 2025-04-01 --to-date 2025-04-07 \\
     --product-types day,sar --max-nadir 30")]
     PassPrediction {
-        /// GeoJSON geometry (Point or Polygon) for the location to predict passes over
+        /// WKT geometry (usually POINT or POLYGON) for the location to predict passes over
         #[arg(long)]
         aoi: String,
 

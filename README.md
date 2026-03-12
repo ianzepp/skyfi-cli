@@ -80,7 +80,7 @@ Search archives:
 
 ```bash
 cargo run -- archives search \
-  --aoi '{"type":"Polygon","coordinates":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}'
+  --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))'
 ```
 
 Inspect a specific archive:
@@ -93,7 +93,7 @@ Create an archive order:
 
 ```bash
 cargo run -- orders order-archive \
-  --aoi '{"type":"Polygon","coordinates":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \
+  --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --archive-id <ARCHIVE_ID>
 ```
 
@@ -101,12 +101,14 @@ Run a feasibility check:
 
 ```bash
 cargo run -- feasibility check \
-  --aoi '{"type":"Polygon","coordinates":[[[-122.4,37.7],[-122.3,37.7],[-122.3,37.8],[-122.4,37.8],[-122.4,37.7]]]}' \
+  --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --product-type day \
   --resolution HIGH \
   --start-date 2025-04-01 \
   --end-date 2025-04-15
 ```
+
+The CLI now follows the checked-in [openapi.json](/Users/ianzepp/github/ianzepp/skyfi-cli/openapi.json) contract for request and response shapes. In particular, `--aoi` values should be WKT strings such as `POLYGON ((...))` or `POINT (...)`.
 
 Get machine-readable JSON from any command:
 

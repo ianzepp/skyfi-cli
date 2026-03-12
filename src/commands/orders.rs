@@ -47,17 +47,12 @@ pub async fn run(action: OrdersAction, client: &Client, json: bool) -> Result<()
             } else {
                 eprintln!("Total orders: {}", data.total);
                 for order in &data.orders {
-                    let info = &order.order_info;
                     println!(
                         "{:<36}  {:>10}  {:?}  {}",
-                        info.get("orderId").and_then(|v| v.as_str()).unwrap_or("-"),
-                        format!("{:?}", order.event.status),
-                        info.get("orderType")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("-"),
-                        info.get("createdAt")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("-"),
+                        order.order_id,
+                        format!("{:?}", order.status),
+                        order.order_type,
+                        order.created_at,
                     );
                 }
             }
