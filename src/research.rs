@@ -700,7 +700,7 @@ async fn resolve_location(arguments: &Value) -> Result<Value, CliError> {
         .get("https://nominatim.openstreetmap.org/search")
         .header(
             reqwest::header::USER_AGENT,
-            "skyfi-cli research mode (https://github.com/ianzepp/skyfi-cli)",
+            "skyfi research mode (https://github.com/ianzepp/skyfi-cli)",
         )
         .query(&[
             ("q", query.clone()),

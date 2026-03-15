@@ -5,6 +5,10 @@ edition = "2021"
 description = "CLI for the SkyFi Platform API"
 license = "MIT"
 
+[[bin]]
+name = "skyfi"
+path = "src/main.rs"
+
 [dependencies]
 clap = { version = "4.5", features = ["derive", "env"] }
 tokio = { version = "1", features = ["full"] }

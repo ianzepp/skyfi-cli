@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO="ianzepp/skyfi-cli"
-BINARY="skyfi-cli"
+BINARY="skyfi"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 
 # Detect OS

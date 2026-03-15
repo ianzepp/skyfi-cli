@@ -128,7 +128,7 @@ fn xml_escape_escapes_plist_special_characters() {
 fn render_launch_agent_plist_includes_service_run_arguments() {
     let plist = render_launch_agent_plist(
         "com.skyfi.alerts",
-        Path::new("/usr/local/bin/skyfi-cli"),
+        Path::new("/usr/local/bin/skyfi"),
         Path::new("/tmp/skyfi/config.toml"),
         300,
         Some(Path::new("/tmp/hook.sh")),
@@ -136,7 +136,7 @@ fn render_launch_agent_plist_includes_service_run_arguments() {
         Path::new("/tmp/skyfi/stderr.log"),
     );
 
-    assert!(plist.contains("<string>/usr/local/bin/skyfi-cli</string>"));
+    assert!(plist.contains("<string>/usr/local/bin/skyfi</string>"));
     assert!(plist.contains("<string>--config</string>"));
     assert!(plist.contains("<string>/tmp/skyfi/config.toml</string>"));
     assert!(plist.contains("<string>alerts</string>"));
@@ -149,13 +149,13 @@ fn render_launch_agent_plist_includes_service_run_arguments() {
 #[test]
 fn render_systemd_service_includes_service_run_arguments() {
     let unit = render_systemd_service(
-        Path::new("/usr/local/bin/skyfi-cli"),
+        Path::new("/usr/local/bin/skyfi"),
         Path::new("/tmp/skyfi/config.toml"),
         Some(Path::new("/tmp/hook.sh")),
     );
 
     assert!(unit.contains("Description=SkyFi alert polling service"));
-    assert!(unit.contains("ExecStart=/usr/local/bin/skyfi-cli --config /tmp/skyfi/config.toml alerts service-run --on-alert /tmp/hook.sh"));
+    assert!(unit.contains("ExecStart=/usr/local/bin/skyfi --config /tmp/skyfi/config.toml alerts service-run --on-alert /tmp/hook.sh"));
 }
 
 #[test]

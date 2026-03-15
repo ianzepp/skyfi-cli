@@ -8,6 +8,8 @@ pay-as-you-go pricing. This CLI exposes the full Platform API v2 command surface
 search, archive and tasking orders, feasibility checks, pass prediction, notifications, pricing,
 and a prompt-driven research-agent mode that writes markdown briefs.
 
+The project and package are named `skyfi-cli`, but the installed executable is `skyfi`.
+
 ---
 
 ## Table of Contents
@@ -43,7 +45,7 @@ and a prompt-driven research-agent mode that writes markdown briefs.
 ### Homebrew (macOS and Linux x86_64)
 
 ```bash
-brew install ianzepp/tap/skyfi-cli
+brew install ianzepp/tap/skyfi
 ```
 
 ### Shell script
@@ -70,6 +72,8 @@ Requires a [Rust toolchain](https://rustup.rs) (stable, edition 2021):
 cargo install --path .
 ```
 
+This installs the `skyfi` executable.
+
 Or run without installing (useful during development):
 
 ```bash
@@ -80,7 +84,7 @@ cargo run -- --help
 
 ## Configuration
 
-skyfi-cli uses a TOML config file at `~/.config/skyfi/config.toml` by default. The file and its
+skyfi uses a TOML config file at `~/.config/skyfi/config.toml` by default. The file and its
 parent directory are created automatically on first write.
 
 ### Set an API key
@@ -88,7 +92,7 @@ parent directory are created automatically on first write.
 Get your API key from <https://app.skyfi.com>. Store it once:
 
 ```bash
-skyfi-cli config set-key <YOUR_KEY>
+skyfi config set-key <YOUR_KEY>
 ```
 
 The key is stored in the config file. To avoid writing secrets to disk, use the environment
@@ -101,7 +105,7 @@ export SKYFI_API_KEY=<YOUR_KEY>
 ### Inspect current config
 
 ```bash
-skyfi-cli config show
+skyfi config show
 ```
 
 The stored API key is always redacted in this output so it is safe to share or log.
@@ -111,7 +115,7 @@ The stored API key is always redacted in this output so it is safe to share or l
 Useful for pointing at a staging or self-hosted instance:
 
 ```bash
-skyfi-cli config set-url https://app.skyfi.com/platform-api
+skyfi config set-url https://app.skyfi.com/platform-api
 ```
 
 The URL is validated before it is saved.
@@ -121,7 +125,7 @@ The URL is validated before it is saved.
 Pass `--config` on any command to use a different config file path:
 
 ```bash
-skyfi-cli --config ./my-config.toml whoami
+skyfi --config ./my-config.toml whoami
 ```
 
 ---
@@ -146,7 +150,7 @@ based on the clipped area in square kilometers, not the full scene footprint.
 All cost values in the API (and in `--json` output) are denominated in **cents (USD)**. Divide by
 100 to get dollars. For example, `orderCost: 1250` means $12.50.
 
-Your account budget and current usage are visible via `skyfi-cli whoami`.
+Your account budget and current usage are visible via `skyfi whoami`.
 
 ### Resolution tiers
 
@@ -229,7 +233,7 @@ Search and purchase existing satellite imagery that has already been captured.
 **Step 1 — Search for imagery over your area:**
 
 ```bash
-skyfi-cli archives search \
+skyfi archives search \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --from 2024-06-01 \
   --to 2024-12-31 \
@@ -243,13 +247,13 @@ Output columns: archive ID, provider, area (km²), GSD (m), price per km², capt
 **Step 2 — Inspect a specific result:**
 
 ```bash
-skyfi-cli archives get <ARCHIVE_ID>
+skyfi archives get <ARCHIVE_ID>
 ```
 
 **Step 3 — Purchase the archive image:**
 
 ```bash
-skyfi-cli orders order-archive \
+skyfi orders order-archive \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --archive-id <ARCHIVE_ID> \
   --label "SF Bay Area survey"
@@ -258,20 +262,20 @@ skyfi-cli orders order-archive \
 **Step 4 — Track and download:**
 
 ```bash
-skyfi-cli orders get <ORDER_ID>
-skyfi-cli orders download <ORDER_ID>
+skyfi orders get <ORDER_ID>
+skyfi orders download <ORDER_ID>
 ```
 
 The `download` subcommand prints a redirect URL. Pipe it to curl to save the file:
 
 ```bash
-curl -L "$(skyfi-cli orders download <ORDER_ID>)" -o imagery.tif
+curl -L "$(skyfi orders download <ORDER_ID>)" -o imagery.tif
 ```
 
 To download a Cloud-Optimized GeoTIFF instead of the default processed image:
 
 ```bash
-curl -L "$(skyfi-cli orders download <ORDER_ID> --deliverable-type cog)" -o imagery.cog.tif
+curl -L "$(skyfi orders download <ORDER_ID> --deliverable-type cog)" -o imagery.cog.tif
 ```
 
 ---
@@ -286,7 +290,7 @@ Feasibility analysis combines weather forecast probability and satellite provide
 produce a score between 0 and 1. The job runs asynchronously; use `--wait` to block until complete:
 
 ```bash
-skyfi-cli feasibility check \
+skyfi feasibility check \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --product-type day \
   --resolution HIGH \
@@ -299,13 +303,13 @@ skyfi-cli feasibility check \
 Without `--wait`, the command returns immediately with a task ID. Poll status yourself:
 
 ```bash
-skyfi-cli feasibility status <FEASIBILITY_ID>
+skyfi feasibility status <FEASIBILITY_ID>
 ```
 
 **Step 2 — Place the tasking order:**
 
 ```bash
-skyfi-cli orders order-tasking \
+skyfi orders order-tasking \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --window-start 2025-04-01T00:00:00Z \
   --window-end 2025-04-15T00:00:00Z \
@@ -324,7 +328,7 @@ pass. This is useful when you need imagery from a particular satellite, angle, o
 **Step 1 — List predicted passes:**
 
 ```bash
-skyfi-cli feasibility pass-prediction \
+skyfi feasibility pass-prediction \
   --aoi 'POINT (-122.4 37.7)' \
   --from-date 2025-04-01 \
   --to-date 2025-04-07 \
@@ -337,7 +341,7 @@ Output columns: provider, resolution tier, off-nadir angle, pass date, `provider
 **Step 2 — Pin a tasking order to a specific pass:**
 
 ```bash
-skyfi-cli orders order-tasking \
+skyfi orders order-tasking \
   --aoi 'POLYGON ((...))' \
   --window-start 2025-04-01T00:00:00Z \
   --window-end 2025-04-07T00:00:00Z \
@@ -352,7 +356,7 @@ The `pass-targeted` subcommand runs both steps atomically: it calls `pass-predic
 earliest matching pass, and immediately places a tasking order pinned to that pass:
 
 ```bash
-skyfi-cli orders pass-targeted \
+skyfi orders pass-targeted \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --window-start 2025-04-01T00:00:00Z \
   --window-end 2025-04-15T00:00:00Z \
@@ -363,7 +367,7 @@ skyfi-cli orders pass-targeted \
 To pick a specific pass rather than the earliest, supply `--provider-window-id`:
 
 ```bash
-skyfi-cli orders pass-targeted \
+skyfi orders pass-targeted \
   --aoi 'POLYGON ((...))' \
   --window-start 2025-04-01T00:00:00Z \
   --window-end 2025-04-15T00:00:00Z \
@@ -380,7 +384,7 @@ Set up a webhook that fires whenever new imagery matching your filters becomes a
 AOI. Useful for staying notified without repeated manual searches.
 
 ```bash
-skyfi-cli notifications create \
+skyfi notifications create \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   --webhook-url https://example.com/hooks/new-imagery \
   --product-type day \
@@ -393,17 +397,17 @@ resolution captures only.
 Manage notifications:
 
 ```bash
-skyfi-cli notifications list
-skyfi-cli notifications get <NOTIFICATION_ID>
-skyfi-cli notifications delete <NOTIFICATION_ID>
+skyfi notifications list
+skyfi notifications get <NOTIFICATION_ID>
+skyfi notifications delete <NOTIFICATION_ID>
 ```
 
 Poll for unseen history events:
 
 ```bash
-skyfi-cli alerts poll
-skyfi-cli alerts watch --interval 300
-skyfi-cli alerts install --interval 300
+skyfi alerts poll
+skyfi alerts watch --interval 300
+skyfi alerts install --interval 300
 ```
 
 ---
@@ -429,7 +433,7 @@ Manage local CLI configuration. Does not require an API key.
 Print the current config file contents. The API key is always redacted.
 
 ```bash
-skyfi-cli config show
+skyfi config show
 ```
 
 #### `config set-key <KEY>`
@@ -437,7 +441,7 @@ skyfi-cli config show
 Save an API key to the config file. The key is written to `~/.config/skyfi/config.toml`.
 
 ```bash
-skyfi-cli config set-key sk_live_abc123...
+skyfi config set-key sk_live_abc123...
 ```
 
 #### `config set-url <URL>`
@@ -445,17 +449,18 @@ skyfi-cli config set-key sk_live_abc123...
 Override the API base URL. The URL is validated before saving.
 
 ```bash
-skyfi-cli config set-url https://app.skyfi.com/platform-api
+skyfi config set-url https://app.skyfi.com/platform-api
 ```
 
 ---
 
 ### ping
 
-Verify network connectivity and basic API availability. Does not require authentication.
+Verify network connectivity and basic API availability. This command uses the normal authenticated
+API client, so configure an API key first.
 
 ```bash
-skyfi-cli ping
+skyfi ping
 ```
 
 ---
@@ -465,7 +470,7 @@ skyfi-cli ping
 Show the authenticated user's name, email, user ID, organization, and budget status.
 
 ```bash
-skyfi-cli whoami
+skyfi whoami
 ```
 
 Example output:
@@ -487,7 +492,7 @@ Search and inspect the archive catalog of previously captured satellite imagery.
 Search for existing imagery over an AOI. Returns a paginated list sorted by relevance.
 
 ```bash
-skyfi-cli archives search \
+skyfi archives search \
   --aoi 'POLYGON ((-122.4 37.7, -122.3 37.7, -122.3 37.8, -122.4 37.8, -122.4 37.7))' \
   [--from <DATE>] \
   [--to <DATE>] \
@@ -524,7 +529,7 @@ The total result count is printed to stderr so it does not interfere with piping
 Retrieve full metadata for a single archive image by its ID.
 
 ```bash
-skyfi-cli archives get abc123-def456
+skyfi archives get abc123-def456
 ```
 
 Returns: provider, constellation, resolution tier, GSD, capture timestamp, cloud cover,
@@ -541,7 +546,7 @@ Create, list, inspect, and download satellite imagery orders.
 List your orders with optional filtering and sorting.
 
 ```bash
-skyfi-cli orders list \
+skyfi orders list \
   [--order-type archive|tasking] \
   [--sort-by <COLUMN,...>] \
   [--sort-dir <asc|desc,...>] \
@@ -557,7 +562,7 @@ and `--sort-dir` values are paired positionally.
 Get full details and status history for a single order.
 
 ```bash
-skyfi-cli orders get 550e8400-e29b-41d4-a716-446655440000
+skyfi orders get 550e8400-e29b-41d4-a716-446655440000
 ```
 
 #### `orders order-archive`
@@ -566,7 +571,7 @@ Purchase an existing archive image. The AOI clips the image to your area of inte
 for the clipped area only.
 
 ```bash
-skyfi-cli orders order-archive \
+skyfi orders order-archive \
   --aoi '<WKT_POLYGON>' \
   --archive-id <ARCHIVE_ID> \
   [--label <TEXT>] \
@@ -587,7 +592,7 @@ skyfi-cli orders order-archive \
 Commission a new satellite capture over your AOI within a future time window.
 
 ```bash
-skyfi-cli orders order-tasking \
+skyfi orders order-tasking \
   --aoi '<WKT_POLYGON>' \
   --window-start <ISO8601_DATETIME> \
   --window-end <ISO8601_DATETIME> \
@@ -626,7 +631,7 @@ command. Equivalent to running `feasibility pass-prediction` and `orders order-t
 --provider-window-id` separately.
 
 ```bash
-skyfi-cli orders pass-targeted \
+skyfi orders pass-targeted \
   --aoi '<WKT_POLYGON>' \
   --window-start <ISO8601_DATETIME> \
   --window-end <ISO8601_DATETIME> \
@@ -649,7 +654,7 @@ By default, selects the earliest predicted pass. Supply `--provider-window-id` t
 Get a download URL for a completed order's deliverable. Prints the URL to stdout.
 
 ```bash
-skyfi-cli orders download <ORDER_ID> [--deliverable-type image|payload|cog|baba]
+skyfi orders download <ORDER_ID> [--deliverable-type image|payload|cog|baba]
 ```
 
 | Deliverable | Description |
@@ -662,7 +667,7 @@ skyfi-cli orders download <ORDER_ID> [--deliverable-type image|payload|cog|baba]
 Save to file:
 
 ```bash
-curl -L "$(skyfi-cli orders download <ORDER_ID>)" -o output.tif
+curl -L "$(skyfi orders download <ORDER_ID>)" -o output.tif
 ```
 
 #### `orders redeliver <ORDER_ID>`
@@ -670,7 +675,7 @@ curl -L "$(skyfi-cli orders download <ORDER_ID>)" -o output.tif
 Re-deliver an order's imagery to a different cloud storage destination.
 
 ```bash
-skyfi-cli orders redeliver <ORDER_ID> \
+skyfi orders redeliver <ORDER_ID> \
   --delivery-driver s3 \
   --delivery-params '{"bucket":"my-bucket","prefix":"imagery/"}'
 ```
@@ -688,7 +693,7 @@ and satellite provider availability for your parameters. Returns a task ID immed
 runs in the background.
 
 ```bash
-skyfi-cli feasibility check \
+skyfi feasibility check \
   --aoi '<WKT_GEOMETRY>' \
   --product-type <TYPE> \
   --resolution <TIER> \
@@ -719,7 +724,7 @@ Task states: `PENDING` → `STARTED` → `COMPLETE` or `ERROR`.
 Poll the status of a feasibility check.
 
 ```bash
-skyfi-cli feasibility status <FEASIBILITY_ID>
+skyfi feasibility status <FEASIBILITY_ID>
 ```
 
 #### `feasibility pass-prediction`
@@ -728,7 +733,7 @@ Find specific satellite passes over a location within a date range. Returns pass
 and pricing for each predicted overpass.
 
 ```bash
-skyfi-cli feasibility pass-prediction \
+skyfi feasibility pass-prediction \
   --aoi '<WKT_GEOMETRY>' \
   --from-date <DATE> \
   --to-date <DATE> \
@@ -754,7 +759,7 @@ Receive webhooks when new imagery appears over an AOI.
 List all active notifications.
 
 ```bash
-skyfi-cli notifications list [--page <N>] [--page-size <N>]
+skyfi notifications list [--page <N>] [--page-size <N>]
 ```
 
 #### `notifications get <NOTIFICATION_ID>`
@@ -762,7 +767,7 @@ skyfi-cli notifications list [--page <N>] [--page-size <N>]
 Get a notification's config and its event history (past webhook deliveries).
 
 ```bash
-skyfi-cli notifications get <NOTIFICATION_ID>
+skyfi notifications get <NOTIFICATION_ID>
 ```
 
 #### `notifications create`
@@ -770,7 +775,7 @@ skyfi-cli notifications get <NOTIFICATION_ID>
 Create a webhook notification that fires when new matching imagery is added to the archive.
 
 ```bash
-skyfi-cli notifications create \
+skyfi notifications create \
   --aoi '<WKT_POLYGON>' \
   --webhook-url <URL> \
   [--product-type <TYPE>] \
@@ -791,7 +796,7 @@ skyfi-cli notifications create \
 Delete a notification. Stops all future webhook deliveries.
 
 ```bash
-skyfi-cli notifications delete <NOTIFICATION_ID>
+skyfi notifications delete <NOTIFICATION_ID>
 ```
 
 ---
@@ -810,9 +815,9 @@ the file passed with `--config`.
 Fetch all notification history and print only unseen events.
 
 ```bash
-skyfi-cli alerts poll
-skyfi-cli alerts poll --json
-skyfi-cli alerts poll --no-save-state
+skyfi alerts poll
+skyfi alerts poll --json
+skyfi alerts poll --no-save-state
 ```
 
 | Flag | Description |
@@ -824,26 +829,8 @@ skyfi-cli alerts poll --no-save-state
 Poll continuously on a fixed interval.
 
 ```bash
-skyfi-cli alerts watch --interval 300
+skyfi alerts watch --interval 300
 ```
-
-### Research Workflow
-
-Run a bounded research agent that uses the SkyFi API plus location resolution and writes a markdown
-brief instead of raw chat output.
-
-```bash
-export OPENAI_API_KEY=<YOUR_KEY>
-
-skyfi-cli research "Investigate recent imagery options for the Port of Sudan" \
-  --output port-of-sudan-brief.md \
-  --trace-output port-of-sudan-trace.json
-```
-
-The generated markdown brief is intended to be the analyst-facing artifact. The optional trace file
-captures model metadata plus every tool call and tool result so the run can be audited or replayed.
-In human-readable mode, the command now streams model output and tool activity to the terminal while
-the run is in progress.
 
 | Flag | Description |
 |---|---|
@@ -860,9 +847,9 @@ Install a local alert polling service that integrates with the host OS:
 In both cases the service can optionally invoke a user hook for each new alert.
 
 ```bash
-skyfi-cli alerts install --interval 300
-skyfi-cli alerts install --interval 120 --on-alert ~/bin/skyfi-alert-hook.sh
-skyfi-cli alerts install --no-load
+skyfi alerts install --interval 300
+skyfi alerts install --interval 120 --on-alert ~/bin/skyfi-alert-hook.sh
+skyfi alerts install --no-load
 ```
 
 Installed artifacts:
@@ -872,7 +859,7 @@ Installed artifacts:
 
 The installed service:
 
-- runs `skyfi-cli alerts service-run` on the requested interval
+- runs `skyfi alerts service-run` on the requested interval
 - uses the normal `alerts-state.json` file so seen/unseen behavior stays consistent
 - on macOS, writes stdout/stderr under `~/.config/skyfi/logs/`
 - on Linux, can be managed with standard `systemctl --user` commands after install
@@ -904,7 +891,7 @@ Hook behavior:
 Inspect the local alert polling state.
 
 ```bash
-skyfi-cli alerts state show
+skyfi alerts state show
 ```
 
 #### `alerts state reset`
@@ -912,7 +899,7 @@ skyfi-cli alerts state show
 Forget all previously seen events and start fresh on the next poll.
 
 ```bash
-skyfi-cli alerts state reset
+skyfi alerts state reset
 ```
 
 ---
@@ -922,8 +909,8 @@ skyfi-cli alerts state reset
 Get pricing tiers for all providers, optionally scoped to your AOI's area.
 
 ```bash
-skyfi-cli pricing
-skyfi-cli pricing --aoi '<WKT_POLYGON>'
+skyfi pricing
+skyfi pricing --aoi '<WKT_POLYGON>'
 ```
 
 Without `--aoi`, returns general pricing tiers for all providers. With `--aoi`, returns
@@ -936,7 +923,7 @@ archives, inspect archive detail, check pricing, run feasibility checks, and pre
 command writes a markdown brief and can optionally emit a JSON trace.
 
 ```bash
-skyfi-cli research "<OBJECTIVE>" [--output <FILE.md>] [--trace-output <FILE.json>] [--model <MODEL>] [--max-steps <N>]
+skyfi research "<OBJECTIVE>" [--output <FILE.md>] [--trace-output <FILE.json>] [--model <MODEL>] [--max-steps <N>]
 ```
 
 Requirements:
@@ -958,9 +945,9 @@ By default, every command produces human-readable text output. Use `--json` on a
 get structured JSON instead:
 
 ```bash
-skyfi-cli --json archives search --aoi 'POLYGON ((...))'
-skyfi-cli --json orders list
-skyfi-cli --json feasibility check ...
+skyfi --json archives search --aoi 'POLYGON ((...))'
+skyfi --json orders list
+skyfi --json feasibility check ...
 ```
 
 JSON output goes to stdout; informational messages (total counts, next-page hints) go to stderr.
@@ -970,16 +957,16 @@ Examples with `jq`:
 
 ```bash
 # Extract all archive IDs from a search
-skyfi-cli --json archives search --aoi 'POLYGON ((...))' | jq '.archives[].archiveId'
+skyfi --json archives search --aoi 'POLYGON ((...))' | jq '.archives[].archiveId'
 
 # List order IDs with their statuses
-skyfi-cli --json orders list | jq '.orders[] | {id: .orderId, status: .status}'
+skyfi --json orders list | jq '.orders[] | {id: .orderId, status: .status}'
 
 # Get just the download URL
-skyfi-cli --json orders download <ORDER_ID> | jq -r '.download_url'
+skyfi --json orders download <ORDER_ID> | jq -r '.download_url'
 
 # List pass providerWindowIds for tasking
-skyfi-cli --json feasibility pass-prediction --aoi 'POINT (...)' \
+skyfi --json feasibility pass-prediction --aoi 'POINT (...)' \
   --from-date 2025-04-01 --to-date 2025-04-07 | jq '.passes[].providerWindowId'
 ```
 

@@ -35,14 +35,14 @@ jobs:
       - name: Package binary
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf skyfi-cli-${{ matrix.target }}.tar.gz skyfi-cli
-          mv skyfi-cli-${{ matrix.target }}.tar.gz ../../../
+          tar czf skyfi-${{ matrix.target }}.tar.gz skyfi
+          mv skyfi-${{ matrix.target }}.tar.gz ../../../
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: skyfi-cli-${{ matrix.target }}
-          path: skyfi-cli-${{ matrix.target }}.tar.gz
+          name: skyfi-${{ matrix.target }}
+          path: skyfi-${{ matrix.target }}.tar.gz
 
   release:
     needs: build
@@ -56,9 +56,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            skyfi-cli-aarch64-apple-darwin/skyfi-cli-aarch64-apple-darwin.tar.gz
-            skyfi-cli-x86_64-apple-darwin/skyfi-cli-x86_64-apple-darwin.tar.gz
-            skyfi-cli-x86_64-unknown-linux-gnu/skyfi-cli-x86_64-unknown-linux-gnu.tar.gz
+            skyfi-aarch64-apple-darwin/skyfi-aarch64-apple-darwin.tar.gz
+            skyfi-x86_64-apple-darwin/skyfi-x86_64-apple-darwin.tar.gz
+            skyfi-x86_64-unknown-linux-gnu/skyfi-x86_64-unknown-linux-gnu.tar.gz
           generate_release_notes: true
 
   update-tap:
@@ -72,9 +72,9 @@ jobs:
       - name: Compute SHA256 checksums
         id: sha
         run: |
-          echo "mac_arm64=$(sha256sum skyfi-cli-aarch64-apple-darwin/skyfi-cli-aarch64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "mac_x86_64=$(sha256sum skyfi-cli-x86_64-apple-darwin/skyfi-cli-x86_64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-          echo "linux_x86_64=$(sha256sum skyfi-cli-x86_64-unknown-linux-gnu/skyfi-cli-x86_64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "mac_arm64=$(sha256sum skyfi-aarch64-apple-darwin/skyfi-aarch64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "mac_x86_64=$(sha256sum skyfi-x86_64-apple-darwin/skyfi-x86_64-apple-darwin.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "linux_x86_64=$(sha256sum skyfi-x86_64-unknown-linux-gnu/skyfi-x86_64-unknown-linux-gnu.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Extract version
         id: version
@@ -82,8 +82,8 @@ jobs:
 
       - name: Generate formula
         run: |
-          cat > skyfi-cli.rb << 'FORMULA'
-          class SkyfiCli < Formula
+          cat > skyfi.rb << 'FORMULA'
+          class Skyfi < Formula
             desc "CLI for the SkyFi Platform API"
             homepage "https://github.com/ianzepp/skyfi-cli"
             version "${{ steps.version.outputs.version }}"
@@ -91,25 +91,25 @@ jobs:
 
             on_macos do
               if Hardware::CPU.arm?
-                url "https://github.com/ianzepp/skyfi-cli/releases/download/${{ github.ref_name }}/skyfi-cli-aarch64-apple-darwin.tar.gz"
+                url "https://github.com/ianzepp/skyfi-cli/releases/download/${{ github.ref_name }}/skyfi-aarch64-apple-darwin.tar.gz"
                 sha256 "${{ steps.sha.outputs.mac_arm64 }}"
               else
-                url "https://github.com/ianzepp/skyfi-cli/releases/download/${{ github.ref_name }}/skyfi-cli-x86_64-apple-darwin.tar.gz"
+                url "https://github.com/ianzepp/skyfi-cli/releases/download/${{ github.ref_name }}/skyfi-x86_64-apple-darwin.tar.gz"
                 sha256 "${{ steps.sha.outputs.mac_x86_64 }}"
               end
             end
 
             on_linux do
-              url "https://github.com/ianzepp/skyfi-cli/releases/download/${{ github.ref_name }}/skyfi-cli-x86_64-unknown-linux-gnu.tar.gz"
+              url "https://github.com/ianzepp/skyfi-cli/releases/download/${{ github.ref_name }}/skyfi-x86_64-unknown-linux-gnu.tar.gz"
               sha256 "${{ steps.sha.outputs.linux_x86_64 }}"
             end
 
             def install
-              bin.install "skyfi-cli"
+              bin.install "skyfi"
             end
 
             test do
-              assert_match "skyfi-cli", shell_output("#{bin}/skyfi-cli --help")
+              assert_match "Usage: skyfi", shell_output("#{bin}/skyfi --help")
             end
           end
           FORMULA
@@ -119,9 +119,9 @@ jobs:
         env:
           API_TOKEN_GITHUB: ${{ secrets.TAP_GITHUB_TOKEN }}
         with:
-          source_file: skyfi-cli.rb
+          source_file: skyfi.rb
           destination_repo: ianzepp/homebrew-tap
           destination_folder: Formula
           user_email: github-actions[bot]@users.noreply.github.com
           user_name: github-actions[bot]
-          commit_message: "Update skyfi-cli to ${{ steps.version.outputs.version }}"
+          commit_message: "Update skyfi to ${{ steps.version.outputs.version }}"
