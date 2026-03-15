@@ -5,7 +5,8 @@ A command-line interface for the [SkyFi Platform API](https://app.skyfi.com), wr
 SkyFi is a satellite imagery marketplace that aggregates 13+ satellite providers — including Planet,
 Umbra, Satellogic, Siwei, Geosat, ICEYE, Vexcel, and Sentinel — behind a single unified API with
 pay-as-you-go pricing. This CLI exposes the full Platform API v2 command surface, covering archive
-search, archive and tasking orders, feasibility checks, pass prediction, notifications, and pricing.
+search, archive and tasking orders, feasibility checks, pass prediction, notifications, pricing,
+and a prompt-driven research-agent mode that writes markdown briefs.
 
 ---
 
@@ -30,6 +31,7 @@ search, archive and tasking orders, feasibility checks, pass prediction, notific
   - [notifications](#notifications)
   - [alerts](#alerts)
   - [pricing](#pricing)
+  - [research](#research)
 - [Output and JSON Mode](#output-and-json-mode)
 - [Error Handling](#error-handling)
 - [Development](#development)
@@ -825,6 +827,24 @@ Poll continuously on a fixed interval.
 skyfi-cli alerts watch --interval 300
 ```
 
+### Research Workflow
+
+Run a bounded research agent that uses the SkyFi API plus location resolution and writes a markdown
+brief instead of raw chat output.
+
+```bash
+export OPENAI_API_KEY=<YOUR_KEY>
+
+skyfi-cli research "Investigate recent imagery options for the Port of Sudan" \
+  --output port-of-sudan-brief.md \
+  --trace-output port-of-sudan-trace.json
+```
+
+The generated markdown brief is intended to be the analyst-facing artifact. The optional trace file
+captures model metadata plus every tool call and tool result so the run can be audited or replayed.
+In human-readable mode, the command now streams model output and tool activity to the terminal while
+the run is in progress.
+
 | Flag | Description |
 |---|---|
 | `--interval` | Seconds between polls (default: 300) |
@@ -908,6 +928,27 @@ skyfi-cli pricing --aoi '<WKT_POLYGON>'
 
 Without `--aoi`, returns general pricing tiers for all providers. With `--aoi`, returns
 area-specific pricing calculated against your polygon's area.
+
+### research
+
+Run a prompt-driven research loop that can resolve locations, inspect account readiness, search
+archives, inspect archive detail, check pricing, run feasibility checks, and predict passes. The
+command writes a markdown brief and can optionally emit a JSON trace.
+
+```bash
+skyfi-cli research "<OBJECTIVE>" [--output <FILE.md>] [--trace-output <FILE.json>] [--model <MODEL>] [--max-steps <N>]
+```
+
+Requirements:
+
+- `OPENAI_API_KEY` must be set
+- `OPENAI_MODEL` can set the default model, or use `--model`
+- `OPENAI_BASE_URL` can point to an OpenAI-compatible proxy endpoint
+
+Behavior:
+
+- human-readable mode streams model text and tool progress to the terminal
+- `--json` suppresses live progress and prints the final artifact metadata as JSON
 
 ---
 

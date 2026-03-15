@@ -221,6 +221,43 @@ USAGE:
         #[arg(long)]
         aoi: Option<String>,
     },
+
+    /// Run a prompt-driven research agent and write a markdown brief
+    #[command(after_long_help = "\
+USAGE:
+  skyfi research \"Investigate recent imagery options for the Port of Sudan\"
+  skyfi research \"Assess collection options for downtown Kherson\" --output kherson-brief.md
+
+BEHAVIOR:
+  This command runs a bounded LLM tool loop using the existing SkyFi API surface
+  plus built-in location resolution. The model can search archives, inspect
+  archive detail, check pricing, run feasibility checks, predict passes, and
+  inspect account readiness. It then writes a markdown brief instead of leaving
+  you with raw chat output.
+
+REQUIREMENTS:
+  OPENAI_API_KEY must be set. Optionally override the model with --model or the
+  OPENAI_MODEL env var. OPENAI_BASE_URL can be used for compatible proxies.")]
+    Research {
+        /// Natural-language research objective
+        prompt: String,
+
+        /// Write the markdown brief to this path
+        #[arg(long)]
+        output: Option<PathBuf>,
+
+        /// Optional JSON trace file containing tool calls and model metadata
+        #[arg(long)]
+        trace_output: Option<PathBuf>,
+
+        /// OpenAI model to use for the research loop
+        #[arg(long)]
+        model: Option<String>,
+
+        /// Maximum number of model/tool turns before aborting
+        #[arg(long, default_value = "8")]
+        max_steps: usize,
+    },
 }
 
 #[derive(Debug, Subcommand)]

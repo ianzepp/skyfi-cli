@@ -35,6 +35,7 @@ mod error;
 #[cfg(test)]
 mod openapi_contract_tests;
 mod output;
+mod research;
 mod types;
 
 use clap::Parser;
@@ -125,6 +126,24 @@ async fn run_api_command(
             } else {
                 output::print_value(&data, 0);
             }
+        }
+        Command::Research {
+            prompt,
+            output,
+            trace_output,
+            model,
+            max_steps,
+        } => {
+            commands::research::run(
+                client,
+                &prompt,
+                output.as_deref(),
+                trace_output.as_deref(),
+                model.as_deref(),
+                max_steps,
+                json,
+            )
+            .await?;
         }
         Command::Config { .. } => {
             return Err(CliError::General(
