@@ -38,7 +38,7 @@ search, archive and tasking orders, feasibility checks, pass prediction, notific
 
 ## Installation
 
-### Homebrew (macOS and Linux)
+### Homebrew (macOS and Linux x86_64)
 
 ```bash
 brew install ianzepp/tap/skyfi-cli
@@ -52,9 +52,9 @@ Downloads the latest release binary for your platform directly from GitHub Relea
 curl -fsSL https://raw.githubusercontent.com/ianzepp/skyfi-cli/master/install.sh | bash
 ```
 
-Supported targets: macOS (x86_64 and arm64), Linux (x86_64). Linux arm64 is not currently
-supported. The install script puts the binary in `/usr/local/bin` by default; override with the
-`INSTALL_DIR` environment variable:
+Supported targets: macOS (`x86_64`, `arm64`) and Linux (`x86_64`). Linux arm64 is not currently
+supported. The install script puts the binary in `/usr/local/bin` by default; override this with
+the `INSTALL_DIR` environment variable:
 
 ```bash
 INSTALL_DIR=~/.local/bin curl -fsSL .../install.sh | bash
@@ -401,6 +401,7 @@ Poll for unseen history events:
 ```bash
 skyfi-cli alerts poll
 skyfi-cli alerts watch --interval 300
+skyfi-cli alerts install --interval 300
 ```
 
 ---
@@ -828,6 +829,55 @@ skyfi-cli alerts watch --interval 300
 |---|---|
 | `--interval` | Seconds between polls (default: 300) |
 | `--no-save-state` | Show unseen events without recording them as seen |
+
+#### `alerts install`
+
+Install a local alert polling service that integrates with the host OS:
+
+- macOS: `launchd` agent with native Notification Center banners via `osascript`
+- Linux: `systemd --user` service + timer, with desktop notifications via `notify-send` when available
+
+In both cases the service can optionally invoke a user hook for each new alert.
+
+```bash
+skyfi-cli alerts install --interval 300
+skyfi-cli alerts install --interval 120 --on-alert ~/bin/skyfi-alert-hook.sh
+skyfi-cli alerts install --no-load
+```
+
+Installed artifacts:
+
+- macOS: `~/Library/LaunchAgents/com.skyfi.alerts.plist`
+- Linux: `~/.config/systemd/user/skyfi-alerts.service` and `~/.config/systemd/user/skyfi-alerts.timer`
+
+The installed service:
+
+- runs `skyfi-cli alerts service-run` on the requested interval
+- uses the normal `alerts-state.json` file so seen/unseen behavior stays consistent
+- on macOS, writes stdout/stderr under `~/.config/skyfi/logs/`
+- on Linux, can be managed with standard `systemctl --user` commands after install
+
+When a new alert is found, the service:
+
+- posts a local notification titled `SkyFi Alert`
+- optionally spawns the executable passed to `--on-alert`
+
+Hook behavior:
+
+- the hook is executed once per new alert
+- the full alert JSON is sent to the hook on stdin
+- the following environment variables are set when available:
+  - `SKYFI_ALERT_NOTIFICATION_ID`
+  - `SKYFI_ALERT_WEBHOOK_URL`
+  - `SKYFI_ALERT_EVENT_KEY`
+  - `SKYFI_ALERT_PRODUCT_TYPE`
+  - `SKYFI_ALERT_OBSERVED_AT`
+
+| Flag | Description |
+|---|---|
+| `--interval` | Seconds between polling runs (default: 300) |
+| `--on-alert` | Executable to run once per new alert; receives alert JSON on stdin |
+| `--no-load` | Write the OS service files without loading/enabling them immediately |
 
 #### `alerts state show`
 

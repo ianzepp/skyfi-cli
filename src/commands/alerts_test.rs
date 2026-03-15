@@ -1,6 +1,7 @@
 use super::{
-    canonical_json, collect_unseen_alerts, event_key, extract_observed_at, state_path, AlertRecord,
-    AlertsState,
+    canonical_json, collect_unseen_alerts, event_key, extract_observed_at,
+    render_launch_agent_plist, render_systemd_service, render_systemd_timer, shell_quote,
+    state_path, xml_escape, AlertRecord, AlertsState,
 };
 use crate::types::{NotificationResponse, ProductType};
 use serde_json::json;
@@ -113,4 +114,62 @@ fn alerts_state_record_seen_deduplicates_and_trims() {
 fn state_path_uses_config_directory_sibling_file() {
     let path = state_path(Path::new("/tmp/skyfi/config.toml"));
     assert_eq!(path, Path::new("/tmp/skyfi/alerts-state.json"));
+}
+
+#[test]
+fn xml_escape_escapes_plist_special_characters() {
+    assert_eq!(
+        xml_escape("A&B\"<'test'>"),
+        "A&amp;B&quot;&lt;&apos;test&apos;&gt;"
+    );
+}
+
+#[test]
+fn render_launch_agent_plist_includes_service_run_arguments() {
+    let plist = render_launch_agent_plist(
+        "com.skyfi.alerts",
+        Path::new("/usr/local/bin/skyfi-cli"),
+        Path::new("/tmp/skyfi/config.toml"),
+        300,
+        Some(Path::new("/tmp/hook.sh")),
+        Path::new("/tmp/skyfi/stdout.log"),
+        Path::new("/tmp/skyfi/stderr.log"),
+    );
+
+    assert!(plist.contains("<string>/usr/local/bin/skyfi-cli</string>"));
+    assert!(plist.contains("<string>--config</string>"));
+    assert!(plist.contains("<string>/tmp/skyfi/config.toml</string>"));
+    assert!(plist.contains("<string>alerts</string>"));
+    assert!(plist.contains("<string>service-run</string>"));
+    assert!(plist.contains("<string>--on-alert</string>"));
+    assert!(plist.contains("<string>/tmp/hook.sh</string>"));
+    assert!(plist.contains("<integer>300</integer>"));
+}
+
+#[test]
+fn render_systemd_service_includes_service_run_arguments() {
+    let unit = render_systemd_service(
+        Path::new("/usr/local/bin/skyfi-cli"),
+        Path::new("/tmp/skyfi/config.toml"),
+        Some(Path::new("/tmp/hook.sh")),
+    );
+
+    assert!(unit.contains("Description=SkyFi alert polling service"));
+    assert!(unit.contains("ExecStart=/usr/local/bin/skyfi-cli --config /tmp/skyfi/config.toml alerts service-run --on-alert /tmp/hook.sh"));
+}
+
+#[test]
+fn render_systemd_timer_uses_requested_interval() {
+    let timer = render_systemd_timer(300);
+    assert!(timer.contains("OnBootSec=30s"));
+    assert!(timer.contains("OnUnitActiveSec=300s"));
+    assert!(timer.contains("Unit=skyfi-alerts.service"));
+}
+
+#[test]
+fn shell_quote_quotes_paths_with_spaces() {
+    assert_eq!(
+        shell_quote("/tmp/skyfi alert hook.sh"),
+        "'/tmp/skyfi alert hook.sh'"
+    );
 }

@@ -175,6 +175,7 @@ USAGE PATTERN:
   skyfi alerts poll
   skyfi alerts poll --json
   skyfi alerts watch --interval 300
+  skyfi alerts install --interval 300
   skyfi alerts state show
   skyfi alerts state reset
 
@@ -258,6 +259,28 @@ pub enum AlertsAction {
         /// Do not persist newly seen events to the local state file
         #[arg(long)]
         no_save_state: bool,
+    },
+
+    /// Install a local alert polling service for macOS or Linux
+    Install {
+        /// Seconds to wait between polls
+        #[arg(long, default_value = "300")]
+        interval: u64,
+
+        /// Optional executable hook to run once per new alert; receives alert JSON on stdin
+        #[arg(long)]
+        on_alert: Option<std::path::PathBuf>,
+
+        /// Write the launch agent but do not load it immediately
+        #[arg(long)]
+        no_load: bool,
+    },
+
+    #[command(hide = true)]
+    ServiceRun {
+        /// Optional executable hook to run once per new alert; receives alert JSON on stdin
+        #[arg(long)]
+        on_alert: Option<std::path::PathBuf>,
     },
 
     /// Inspect or reset the local alerts state file
