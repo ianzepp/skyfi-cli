@@ -790,7 +790,7 @@ impl AlertsState {
     }
 
     fn record_seen(&mut self, alerts: &[AlertRecord], polled_at: &str) {
-        let mut combined = self.seen_event_keys.iter().cloned().collect::<Vec<_>>();
+        let mut combined = self.seen_event_keys.to_vec();
         let mut seen = combined.iter().cloned().collect::<HashSet<_>>();
 
         for alert in alerts {

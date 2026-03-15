@@ -1012,8 +1012,11 @@ cargo test
 ### Tests
 
 Unit tests live in companion `_test.rs` files adjacent to each source module (e.g.,
-`orders_test.rs` next to `orders.rs`). Integration tests that verify the CLI's output shape
-against the live OpenAPI contract live in `src/openapi_contract_tests.rs`.
+`orders_test.rs` next to `orders.rs`). Contract tests in `src/openapi_contract_tests.rs`
+verify request serialization and mock-response deserialization against the checked-in
+`openapi.json` schema. The hygiene ratchet in `tests/hygiene.rs` enforces zero-budget bans
+on `unwrap()`, `expect()`, `panic!()`, `unreachable!()`, `todo!()`, and `unimplemented!()`
+in production `src/` code.
 
 ### Project layout
 
@@ -1022,16 +1025,28 @@ src/
   main.rs                     # Entry point: arg parsing, config loading, command dispatch
   cli.rs                      # Clap CLI definitions for all commands and their arguments
   client.rs                   # HTTP client wrapper around reqwest
+  client_test.rs              # Client-specific unit tests
   config.rs                   # Config file loading and saving (~/.config/skyfi/config.toml)
+  config_test.rs              # Config unit tests
   error.rs                    # Unified CliError type
+  openapi_contract_tests.rs   # Request/response contract tests against openapi.json
   output.rs                   # Human-readable and JSON output helpers
+  output_test.rs              # Output formatting unit tests
+  research.rs                 # Prompt-driven research engine and tool loop
+  research_test.rs            # Research engine unit tests
   types.rs                    # Shared request/response types (serde models)
   commands/
     mod.rs                    # Re-exports command modules
+    alerts.rs                 # Alerts polling, local state, and service installers
     archives.rs               # archives search, archives get
     config.rs                 # config show, set-key, set-url
     feasibility.rs            # feasibility check, status, pass-prediction
     notifications.rs          # notifications list, get, create, delete
     orders.rs                 # orders list, get, order-archive, order-tasking, pass-targeted,
                               #   download, redeliver
+    research.rs               # CLI wrapper for the research engine
+tests/
+  hygiene.rs                  # Ratchet test for panic/unwrap-style hygiene regressions
+scripts/
+  hygiene.sh                  # Repo-native fmt/clippy/test maintenance script
 ```
